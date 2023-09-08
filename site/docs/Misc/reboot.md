@@ -1,6 +1,6 @@
 ---
 layout: page
-title: Reboot
+title: reboot
 parent: Misc
 ---
 Restarts the system.\

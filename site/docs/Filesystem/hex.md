@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Hex
+title: Hex commands
 parent: Filesystem
 has_children: true
 ---

@@ -59,3 +59,6 @@ callouts:
   note:
     title: Note
     color: purple
+  pro-tip:
+    title: Pro Tip 💡
+    color: yellow

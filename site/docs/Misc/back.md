@@ -1,6 +1,6 @@
 ---
 layout: page
-title: Back
+title: back
 parent: Misc
 ---
 The back command allows you to exit the current submenu after selecting an option. Example:

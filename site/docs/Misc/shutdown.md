@@ -1,6 +1,6 @@
 ---
 layout: page
-title: Shutdown
+title: shutdown
 parent: Misc
 ---
 Shuts down the system.\
