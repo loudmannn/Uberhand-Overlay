@@ -14,7 +14,7 @@ std::pair<std::string, int> readTextFromFile (const std::string& filePath) {
 
     std::string line;
     while (std::getline(file, line)) {
-        if (line == "\r") {
+        if (line == "\r" || line.empty()) {
             lines += "\n"; // Preserve empty lines
             lineCount++;
             continue;
