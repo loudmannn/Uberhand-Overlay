@@ -2,3 +2,4 @@
 *.nacp
 *.elf
 *.ovl
+.vscode

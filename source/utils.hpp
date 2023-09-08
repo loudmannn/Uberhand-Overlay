@@ -329,8 +329,7 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
                         result = deleteFileOrDirectory(sourcePath);
                     }
                     if (!result && catchErrors) {
-                        logMessage("Error in " + commandName + " command");
-                        return -1;
+                        logMessage("There is no " + command[1] + " file.");
                     }
                 }
             }
