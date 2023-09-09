@@ -89,7 +89,8 @@ namespace tsl {
         Red,
         Gray,
         Green,
-        White
+        White,
+        DefaultText
     };
     
     namespace cfg {
@@ -2256,7 +2257,7 @@ namespace tsl {
              *
              * @param text Initial description text
              */
-            ListItem(const std::string& text, const std::string& value = "")
+            ListItem(const std::string& text, const std::string& value = "") 
                 : Element(), m_text(text), m_value(value) {
             }
             virtual ~ListItem() {}
@@ -2294,7 +2295,7 @@ namespace tsl {
                 if (this->m_trunctuated) {
                     if (this->m_focused) {
                         renderer->enableScissoring(this->getX(), this->getY(), this->m_maxWidth + 40, this->getHeight());
-                        renderer->drawString(this->m_scrollText.c_str(), false, this->getX() + 20 - this->m_scrollOffset, this->getY() + 45, 23, tsl::style::color::ColorText);
+                        renderer->drawString(this->m_scrollText.c_str(), false, this->getX() + 20 - this->m_scrollOffset, this->getY() + 45, 23, this->m_color);
                         renderer->disableScissoring();
                         if (this->m_scrollAnimationCounter == 90) {
                             if (this->m_scrollOffset == this->m_textWidth) {
@@ -2307,10 +2308,10 @@ namespace tsl {
                             this->m_scrollAnimationCounter++;
                         }
                     } else {
-                        renderer->drawString(this->m_ellipsisText.c_str(), false, this->getX() + 20, this->getY() + 45, 23, a(tsl::style::color::ColorText));
+                        renderer->drawString(this->m_ellipsisText.c_str(), false, this->getX() + 20, this->getY() + 45, 23, a(this->m_color));
                     }
                 } else {
-                    renderer->drawString(this->m_text.c_str(), false, this->getX() + 20, this->getY() + 45, 23, a(tsl::style::color::ColorText));
+                    renderer->drawString(this->m_text.c_str(), false, this->getX() + 20, this->getY() + 45, 23, a(this->m_color));
                 }
 
                 // CUSTOM SECTION START (modification for submenu footer color)
@@ -2406,6 +2407,29 @@ namespace tsl {
                 this->m_maxWidth = 0;
             }
 
+            inline void setColor(tsl::PredefinedColors col=tsl::PredefinedColors::Gray) {
+                switch (col) 
+                {
+                    case tsl::PredefinedColors::Green:
+                        this->m_color = tsl::Color(0x0, 0xF, 0xD, 0xF);
+                        break;
+                    case tsl::PredefinedColors::Red:
+                        this->m_color = tsl::Color(0xF, 0x0, 0x2, 0xF);
+                        break;
+                    case tsl::PredefinedColors::White:
+                        this->m_color = tsl::Color(0xF, 0xF, 0xF, 0xF);
+                        break;
+                    case tsl::PredefinedColors::Gray:
+                        this->m_color = tsl::Color(0xA, 0xA, 0xA, 0xF);
+                        break;
+                    case tsl::PredefinedColors::DefaultText:
+                    default:
+                        this->m_color = tsl::Color(0xF, 0xF, 0xF, 0xF);
+                        break;
+                }
+                this->m_maxWidth = 0;
+            }
+
             /**
              * @brief Gets the left hand description text of the list item
              *
@@ -2433,6 +2457,7 @@ namespace tsl {
             bool m_scroll = false;
             bool m_trunctuated = false;
             Color m_faint = tsl::Color(0xA, 0xA, 0xA, 0xF);
+            Color m_color = tsl::style::color::ColorText;
 
             bool m_touched = false;
 

@@ -601,3 +601,18 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
     }
     return 0;
 }
+
+tsl::PredefinedColors defineColor(std::string strColor) {
+    logMessage ("string color: " + strColor);
+    if (strColor == "Green") {
+        return tsl::PredefinedColors::Green;
+    } else if (strColor == "Red") {
+        return tsl::PredefinedColors::Red;
+    } else if (strColor == "White") {
+        return tsl::PredefinedColors::White;
+    } else if (strColor == "Grey") {
+        return tsl::PredefinedColors::Grey;
+    } else {
+        return tsl::PredefinedColors::DefaultText;
+    } 
+}
