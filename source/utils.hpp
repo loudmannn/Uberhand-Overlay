@@ -275,30 +275,36 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
                 jsonPath = preprocessPath(command[1]);
             }
         } else if (commandName == "make" || commandName == "mkdir") {
-            // Delete command
-            if (command.size() >= 2) {
-                sourcePath = preprocessPath(command[1]);
-                createDirectory(sourcePath);
+            // Make direcrory command
+            if (command[1] != "") {
+                if (command.size() >= 2) {
+                    sourcePath = preprocessPath(command[1]);
+                    createDirectory(sourcePath);
+                }
+            } else if (catchErrors) {
+                    logMessage("Warning in " + commandName + " command: path is empty. Command is ignored");
             }
-
             // Perform actions based on the command name
         } else if (commandName == "copy" || commandName == "cp") {
             // Copy command
             if (command.size() >= 3) {
-                sourcePath = preprocessPath(command[1]);
-                destinationPath = preprocessPath(command[2]);
-                bool result;
-                if (sourcePath.find('*') != std::string::npos) {
+                if (command[1] != "" && command[2] != "") {
+                    sourcePath = preprocessPath(command[1]);
+                    destinationPath = preprocessPath(command[2]);
+                    bool result;
+                    if (sourcePath.find('*') != std::string::npos) {
                     // Delete files or directories by pattern
                     result = copyFileOrDirectoryByPattern(sourcePath, destinationPath);
-                } else {
-                    result = copyFileOrDirectory(sourcePath, destinationPath);
+                    } else {
+                        result = copyFileOrDirectory(sourcePath, destinationPath);
+                    }
+                    if (!result && catchErrors) {
+                        logMessage("Error in " + commandName + " command");
+                        return -1;
+                    }
+                } else if (catchErrors) {
+                    logMessage("Warning in " + commandName + " command: source or target is empty. Command is ignored");
                 }
-                if (!result && catchErrors) {
-                    logMessage("Error in " + commandName + " command");
-                    return -1;
-                }
-                
             }
         } else if (commandName == "mirror_copy" || commandName == "mirror_cp") {
             // Copy command
@@ -320,17 +326,21 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
             // Delete command
             if (command.size() >= 2) {
                 bool result;
+                if (command[1] != "") {
                 sourcePath = preprocessPath(command[1]);
-                if (!isDangerousCombination(sourcePath)) {
-                    if (sourcePath.find('*') != std::string::npos) {
-                        // Delete files or directories by pattern
-                        result = deleteFileOrDirectoryByPattern(sourcePath);
-                    } else {
-                        result = deleteFileOrDirectory(sourcePath);
+                    if (!isDangerousCombination(sourcePath)) {
+                        if (sourcePath.find('*') != std::string::npos) {
+                            // Delete files or directories by pattern
+                            result = deleteFileOrDirectoryByPattern(sourcePath);
+                        } else {
+                            result = deleteFileOrDirectory(sourcePath);
+                        }
+                        if (!result && catchErrors) {
+                            logMessage("There is no " + command[1] + " file.");
+                        }
                     }
-                    if (!result && catchErrors) {
-                        logMessage("There is no " + command[1] + " file.");
-                    }
+                } else if (catchErrors) {
+                    logMessage("Warning in " + commandName + " command: path is empty. Command is ignored");
                 }
             }
         } else if (commandName == "mirror_delete" || commandName == "mirror_del") {
