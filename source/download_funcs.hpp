@@ -126,13 +126,17 @@ bool unzipFile(const std::string& zipFilePath, const std::string& toDestination)
         
         createDirectory(directoryPath);
         
+        if (isDirectory(extractedFilePath)) {
+            continue;
+        }
+        
         if (isDirectory(directoryPath)) {
-            logMessage("directoryPath: success");
+            //logMessage("directoryPath: success");
         } else {
             logMessage("directoryPath: failure");
         }
         
-        logMessage(std::string("directoryPath: ") + directoryPath);
+        //logMessage(std::string("directoryPath: ") + directoryPath);
 
         ZZIP_FILE* file = zzip_file_open(dir, entry.d_name, 0);
         if (file) {
