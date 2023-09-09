@@ -233,6 +233,7 @@ public:
                                 if (keyValue && json_is_string(keyValue)) {
                                     std::string name;
                                     json_t* hexValue = json_object_get(item, "hex");
+                                    json_t* colorValue = json_object_get(item, "color");
                                     if (markCurrent && hexValue) {
                                         char* hexValueStr = (char*)json_string_value(hexValue);
                                         if (detectSize) {
@@ -250,6 +251,9 @@ public:
                                         }
                                     } else {
                                             name = json_string_value(keyValue);
+                                    }
+                                    if (colorValue) {
+                                        name = name + " ::" + json_string_value(colorValue);
                                     }
                                     filesList.push_back(name);
                                 }
@@ -332,13 +336,19 @@ public:
             }
 
             if (!useToggle) {
+                std::string color = "Default";
                 if (useJson) { // For JSON wildcards
                     size_t pos = file.find(" - ");
+                    size_t colorPos = file.find(" ::");
                     std::string footer = "";
                     std::string optionName = file;
+                    if (colorPos != std::string::npos) {
+                        color = optionName.substr(colorPos + 3);
+                        optionName = optionName.substr(0, colorPos);
+                    }
                     if (pos != std::string::npos) {
                         footer = file.substr(pos + 2); // Assign the part after "&&" as the footer
-                        optionName = file.substr(0, pos); // Strip the "&&" and everything after it
+                        optionName = optionName.substr(0, pos); // Strip the "&&" and everything after it
                     }
                     auto listItem = new tsl::elm::ListItem(optionName);
                     listItem->setValue(footer);
@@ -361,6 +371,7 @@ public:
                         }
                         return false;
                     });
+                    listItem->setColor(defineColor(color));
                     list->addItem(listItem);
                 } else {
                     auto listItem = new tsl::elm::ListItem(itemName);
