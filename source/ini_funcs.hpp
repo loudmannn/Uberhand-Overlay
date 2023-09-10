@@ -8,6 +8,7 @@
 #include <sstream>  // For std::istringstream
 #include <algorithm> // For std::remove_if
 #include <cctype>   // For ::isspace
+#include "debug_funcs.hpp"
 
 // Ini Functions
 
@@ -207,6 +208,20 @@ std::vector<std::pair<std::string, std::vector<std::vector<std::string>>>> loadO
         if (trimmedLine.empty() || trimmedLine[0] == '#') {
             // Skip empty lines and comment lines
             continue;
+        } else if (trimmedLine.starts_with("--")) { // Separator
+            if (!currentOption.empty()) {
+                // Store previous option and its commands
+                options.emplace_back(std::move(currentOption), std::move(commands));
+                commands.clear();
+                currentOption = {};
+            }
+
+            auto name = trimmedLine.substr(2);
+            auto start = name.find_first_not_of(' ');
+            name = name.substr(start);
+            std::vector<std::string> command{ "separator" };
+            commands.push_back(std::move(command));
+            options.emplace_back(std::move(name), std::move(commands));
         } else if (trimmedLine[0] == '[' && trimmedLine.back() == ']') {
             // New option section
             if (!currentOption.empty()) {
@@ -215,7 +230,7 @@ std::vector<std::pair<std::string, std::vector<std::vector<std::string>>>> loadO
                 commands.clear();
             }
             currentOption = trimmedLine.substr(1, trimmedLine.size() - 2);  // Extract option name
-        } else {
+        } else if (!currentOption.empty()) {
             // Command line
             std::istringstream iss(trimmedLine);
             std::vector<std::string> commandParts;
