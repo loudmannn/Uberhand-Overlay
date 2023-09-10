@@ -2423,12 +2423,18 @@ namespace tsl {
                     case tsl::PredefinedColors::Gray:
                         this->m_color = tsl::Color(0xA, 0xA, 0xA, 0xF);
                         break;
+<<<<<<< HEAD
                     case tsl::PredefinedColors::Orange:
                         this->m_color = tsl::Color(0xFF, 0xA5, 0x00, 0xF);
                         break;
                     case tsl::PredefinedColors::DefaultText:
                     default:
                         this->m_color = tsl::style::color::ColorText;
+=======
+                    case tsl::PredefinedColors::DefaultText:
+                    default:
+                        this->m_color = tsl::Color::ColorText;
+>>>>>>> 5fb737a0fc9bdb0c7c28b0ae6a9e1de5e6efded8
                         break;
                 }
                 this->m_maxWidth = 0;
