@@ -2424,7 +2424,7 @@ namespace tsl {
                         break;
                     case tsl::PredefinedColors::DefaultText:
                     default:
-                        this->m_color = tsl::Color::ColorText;
+                        this->m_color = tsl::style::color::ColorText;
                         break;
                 }
                 this->m_maxWidth = 0;
