@@ -2295,7 +2295,7 @@ namespace tsl {
                 if (this->m_trunctuated) {
                     if (this->m_focused) {
                         renderer->enableScissoring(this->getX(), this->getY(), this->m_maxWidth + 40, this->getHeight());
-                        renderer->drawString(this->m_scrollText.c_str(), false, this->getX() + 20 - this->m_scrollOffset, this->getY() + 45, 23, this->m_color);
+                        renderer->drawString(this->m_scrollText.c_str(), false, this->getX() + 20 - this->m_scrollOffset, this->getY() + 45, 23, a(this->m_color));
                         renderer->disableScissoring();
                         if (this->m_scrollAnimationCounter == 90) {
                             if (this->m_scrollOffset == this->m_textWidth) {
@@ -2424,7 +2424,7 @@ namespace tsl {
                         break;
                     case tsl::PredefinedColors::DefaultText:
                     default:
-                        this->m_color = tsl::Color(0xF, 0xF, 0xF, 0xF);
+                        this->m_color = tsl::Color::ColorText;
                         break;
                 }
                 this->m_maxWidth = 0;
