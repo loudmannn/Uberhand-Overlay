@@ -137,7 +137,7 @@ public:
         std::pair<std::string, int> textDataPair;
 
         constexpr int lineHeight = 20;  // Adjust the line height as needed
-        constexpr int fontSize = 16;    // Adjust the font size as needed
+        constexpr int fontSize = 19;    // Adjust the font size as needed
         
         for (const auto& cmd : commands) {
             if (cmd.size() > 1) {
