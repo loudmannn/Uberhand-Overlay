@@ -90,6 +90,7 @@ namespace tsl {
         Gray,
         Green,
         White,
+        Orange,
         DefaultText
     };
     
@@ -2421,6 +2422,9 @@ namespace tsl {
                         break;
                     case tsl::PredefinedColors::Gray:
                         this->m_color = tsl::Color(0xA, 0xA, 0xA, 0xF);
+                        break;
+                    case tsl::PredefinedColors::Orange:
+                        this->m_color = tsl::Color(0xFF, 0xA5, 0x00, 0xF);
                         break;
                     case tsl::PredefinedColors::DefaultText:
                     default:

@@ -610,6 +610,8 @@ tsl::PredefinedColors defineColor(std::string strColor) {
         return tsl::PredefinedColors::Red;
     } else if (strColor == "White") {
         return tsl::PredefinedColors::White;
+    } else if (strColor == "Orange") {
+        return tsl::PredefinedColors::Orange;
     } else if (strColor == "Gray") {
         return tsl::PredefinedColors::Gray;
     } else {

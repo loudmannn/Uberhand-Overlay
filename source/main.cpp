@@ -343,11 +343,11 @@ public:
                     std::string footer = "";
                     std::string optionName = file;
                     if (colorPos != std::string::npos) {
-                        color = optionName.substr(colorPos + 3);
-                        optionName = optionName.substr(0, colorPos);
+                        color = file.substr(colorPos + 3);
+                        optionName = file.substr(0, colorPos);
                     }
                     if (pos != std::string::npos) {
-                        footer = file.substr(pos + 2); // Assign the part after "&&" as the footer
+                        footer = optionName.substr(pos + 2); // Assign the part after "&&" as the footer
                         optionName = optionName.substr(0, pos); // Strip the "&&" and everything after it
                     }
                     auto listItem = new tsl::elm::ListItem(optionName);
