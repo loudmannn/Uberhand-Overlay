@@ -486,7 +486,12 @@ public:
             
             // Extract the path pattern from commands
             bool useToggle = false;
+            bool isSeparator = false;
             for (const auto& cmd : option.second) {
+                if(cmd[0] == "separator"){
+                    isSeparator = true;
+                    break;
+                }
                 if (cmd.size() > 1) {
                     if (cmd[0] == "source") {
                         pathReplace = cmd[1];
@@ -503,7 +508,10 @@ public:
                 } 
             }
 
-            if (usePattern || !useToggle){
+            if (isSeparator) {
+                auto item = new tsl::elm::CategoryHeader(optionName, true);
+                list->addItem(item);
+            } else if (usePattern || !useToggle){
                 auto listItem = static_cast<tsl::elm::ListItem*>(nullptr);
                 if ((footer == "\u25B6") || (footer.empty())) {
                     listItem = new tsl::elm::ListItem(optionName, footer);
