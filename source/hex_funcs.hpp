@@ -162,6 +162,51 @@ std::string readHexDataAtOffset(const std::string& filePath, const std::string& 
     return result;
 }
 
+// Is used when mutiple read iterrations are required to reduce the number of file open/close requests
+std::string readHexDataAtOffsetF(FILE* file, const std::string& custOffset, const std::string& hexData, const std::string& offsetStr, size_t length) {
+    // logMessage("Entered readHexDataAtOffsetF");
+
+    std::stringstream hexStream;
+    char lowerToUpper;
+    std::string result = "";
+    char hexBuffer[length];
+    int sum = 0;
+
+    if (!custOffset.empty()) {
+        sum = std::stoi(offsetStr) + std::stoi(custOffset); // count from "C" letter
+    }
+    else {
+        logMessage("CUST not found.");
+    }
+
+    if (fseek(file, sum, SEEK_SET) != 0) {
+        logMessage("Error seeking to offset.");
+        fclose(file);
+        return "";
+    }
+
+    if (fread(hexBuffer, 1, length, file) == length) {
+        for (size_t i = 0; i < length; ++i) {
+            hexStream << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(hexBuffer[i]);
+        }
+    } else {
+        if (feof(file)) {
+            logMessage("End of file reached.");
+        } else if (ferror(file)) {
+            logMessage("Error reading data from file: ");
+            logMessage(std::to_string(errno)); // Print the error description
+        }
+    }
+
+    while (hexStream.get(lowerToUpper)) {
+        result += std::toupper(lowerToUpper);
+    }
+
+    // logMessage("Hex data at offset:" + result);
+    
+    return result;
+}
+
 bool hexEditByOffset(const std::string& filePath, const std::string& offsetStr, const std::string& hexData) {
     // Convert the offset string to std::streampos
     std::streampos offset = std::stoll(offsetStr);
@@ -265,4 +310,19 @@ bool hexEditCustOffset(const std::string& filePath, const std::string& offsetStr
         logMessage("CUST not found." );
     }
     return true;
+}
+
+int reversedHexToInt(const std::string& hex_str) {
+    std::string reversedHex;
+
+    for (int i = hex_str.length() - 2; i >= 0; i -= 2) {
+        reversedHex += hex_str.substr(i, 2);
+    }
+    std::istringstream iss(reversedHex);
+    iss >> std::hex;
+
+    int result;
+    iss >> result;
+
+    return result;
 }
