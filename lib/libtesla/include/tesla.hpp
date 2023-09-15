@@ -1581,54 +1581,7 @@ namespace tsl {
             std::function<void(gfx::Renderer*, s32 x, s32 y, s32 w, s32 h)> m_renderFunc;
         };
 
-        // CUSTOM SECTION START
-
-        
-        int calculateStringWidth(const std::string& str, int fontSize) {
-            // Map of character widths
-            std::unordered_map<char, int> characterWidths = {
-                {'U', 8},
-                {'l', 3},
-                {'t', 4},
-                {'r', 4},
-                {'a', 6},
-                {'b', 6},
-                {'e', 6}
-                // Add more character width mappings as needed
-            };
-
-            int totalWidth = 0;
-
-            for (char letter : str) {
-                // Lookup the width of the current character
-                int letterWidth = characterWidths[letter];
-
-                // Accumulate the width
-                totalWidth += letterWidth;
-            }
-
-            // Adjust the total width based on the font size
-            return (totalWidth * fontSize) / 10;
-        }
-        
-        float calculateAmplitude(float x) {
-            //const float phasePeriod = 360;  // One full phase period
-
-            // Calculate the phase within the full period
-            //int phase = static_cast<int>((x) * (180.0 / 3.1415927)) % static_cast<int>(phasePeriod);
-
-            // Check if the phase is odd
-            //if (phase % 2 == 1) {
-            //    return 1.0f;  // Flat amplitude (maximum positive)
-            //} else {
-            //    // Calculate the sinusoidal amplitude for the remaining period
-            //    return (std::cos((-x) * (180.0 / 3.1415927)) + 1) / 2;
-            //}
-            return (std::cos((-x) * (180.0 / 3.1415927)) + 1) / 2;
-        }
-        
-        // CUSTOM SECTION END
-        
+                
         /**
          * @brief The base frame which can contain another view
          *
@@ -1659,50 +1612,12 @@ namespace tsl {
                 int offset = 0;
                 // Check if m_title is "Uberhand"
                 if (this->m_title == "Uberhand") {
-                    static float counter = 0;
-                    std::string firstHalf = "Uber";
-                    std::string secondHalf = "hand";
                     
                     int x = 20;
                     //int y = 50;
                     int fontSize = 42;
                     offset = 6;
-
-                    // Draw the first half of the string in white color
-                    //renderer->drawString(firstHalf.c_str(), false, x1, y+offset, fontSize, tsl::Color(0xFF, 0xFF, 0xFF, 0xFF));
-                    //drawHighlightText(renderer);
-                    
-                    for (char letter : firstHalf) {
-                        // Calculate the progress for each letter based on the counter
-                        const float progress = calculateAmplitude(counter - x * 0.001F);
-
-                        // Calculate the corresponding highlight color for each letter
-                        Color highlightColor = {
-                            static_cast<u8>((0xA - 0xF) * (3 - 1.5*progress) + 0xF),
-                            static_cast<u8>((0xA - 0xF) * 1.5*progress + 0xF),
-                            static_cast<u8>((0xA - 0xF) * (1.25 - progress) + 0xF),
-                            0xF
-                        };
-
-                        // Draw each character with its corresponding highlight color
-                        renderer->drawString(std::string(1, letter).c_str(), false, x, y + offset, fontSize, a(highlightColor));
-
-                        // Manually calculate the width of the current letter
-                        int letterWidth = calculateStringWidth(std::string(1, letter), fontSize);
-
-                        // Adjust the x-coordinate for the next character's position
-                        x += letterWidth;
-
-                        // Update the counter for the next character
-                        counter += 0.0002F;
-                    }
-                    
-                    
-                    // Calculate the position for the second half based on the width of the first half
-                    //int x2 = x1 + (firstHalf.length() * fontSize)/2 -2;
-
-                    // Draw the second half of the string in red color
-                    renderer->drawString(secondHalf.c_str(), false, x, y+offset, fontSize, tsl::Color(0xFF, 0x00, 0x00, 0xFF));
+                    renderer->drawString(m_title.c_str(), false, x, y+offset, fontSize, a(tsl::style::color::ColorText));
                 }
                 else {
                     if (this->m_subtitle == "Uberhand Package") {
