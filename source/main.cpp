@@ -133,6 +133,7 @@ public:
         std::string name = "";
         std::string offset  = "";
         bool allign = false;
+        int checkDefault = 0;
         int length = 0;
         int lineCount = 1;
 
@@ -147,7 +148,7 @@ public:
             custOffset = offsetStrs[0];
             FILE* file = fopen("/atmosphere/kips/loader.kip", "rb");
             if (!file) {
-                logMessage("Failed to open the file.");
+                logMessage("Failed to open the loader.kip.");
                 return std::make_pair(output, lineCount);
             }
 
@@ -197,23 +198,36 @@ public:
                                 currentHex.pop_back();
                                 output += name + ": " + currentHex;
                             } else {
-                                currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
-
+                                json_t* j_default = json_object_get(item, "default");
+                                if (j_default) {
+                                    checkDefault = std::stoi(json_string_value(j_default));
+                                    if (checkDefault == 1) {
+                                        offset = std::to_string(std::stoi(offset) + 2);
+                                    }
+                                }
                                 if (allign) {
                                     size_t found = output.rfind('\n');
-                                    logMessage("output.length(): " + std::to_string(output.length()));
-                                    logMessage("found = " + std::to_string(found));
+                                    // logMessage("output.length(): " + std::to_string(output.length()));
+                                    // logMessage("found = " + std::to_string(found));
 
-                                    int numreps = 30 - (output.length() - found - 1) - name.length() - length - 2;
+                                    int numreps = 33 - (output.length() - found - 1) - name.length() - length - 2;
                                     if (!extent.empty()) {
                                         numreps -= extent.length();
                                     }
-                                    logMessage("numreps" + std::to_string(numreps));
+                                    // logMessage("numreps" + std::to_string(numreps));
                                     output.append(numreps, ' ');
                                     allign = false;
                                 }
-                                unsigned int intValue = reversedHexToInt(currentHex);
-                                output += name + ": " + std::to_string(intValue).substr(0, length);
+                                
+                                currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
+                                if (checkDefault && currentHex != "000000") {
+                                    output += name + ": " + "Default";
+                                    extent = "";
+                                    checkDefault = 0;
+                                } else {
+                                    unsigned int intValue = reversedHexToInt(currentHex);
+                                    output += name + ": " + std::to_string(intValue).substr(0, length);
+                                }
                             }
 
                             if (!extent.empty()) {
@@ -223,7 +237,6 @@ public:
                                 output += '\n';
                                 lineCount++;
                             } else {
-                                // output += "   ";
                                 allign = true;
                             }
                         } else {
@@ -320,7 +333,7 @@ public:
                     int textsize = textDataPair.second;
                     if (!textdata.empty()) {
                         list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize, textdata](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
-                        renderer->drawString(textdata.c_str(), false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText), 350);
+                        renderer->drawString(textdata.c_str(), false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
                         }), fontSize * textsize + lineHeight);
                         auto listItem = new tsl::elm::ListItem("Back");
                         listItem->setClickListener([](uint64_t keys) { // Add 'command' to the capture list
