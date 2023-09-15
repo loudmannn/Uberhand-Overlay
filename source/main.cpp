@@ -202,8 +202,11 @@ public:
                                 if (j_default) {
                                     checkDefault = std::stoi(json_string_value(j_default));
                                     if (checkDefault == 1) {
-                                        offset = std::to_string(std::stoi(offset) + 2);
+                                        std::string offsetDef = std::to_string(std::stoi(offset) + length);
+                                        currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offsetDef.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
                                     }
+                                } else {
+                                    currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
                                 }
                                 if (allign) {
                                     size_t found = output.rfind('\n');
@@ -219,12 +222,14 @@ public:
                                     allign = false;
                                 }
                                 
-                                currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
+                                // currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
+                                logMessage("currentHex = " + currentHex);
                                 if (checkDefault && currentHex != "000000") {
                                     output += name + ": " + "Default";
                                     extent = "";
                                     checkDefault = 0;
                                 } else {
+                                    currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
                                     unsigned int intValue = reversedHexToInt(currentHex);
                                     output += name + ": " + std::to_string(intValue).substr(0, length);
                                 }
@@ -251,6 +256,7 @@ public:
                 }
             }
             logMessage(output);
+            fclose(file);
         }
         return std::make_pair(output, lineCount);
     }
