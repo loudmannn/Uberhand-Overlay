@@ -123,11 +123,131 @@ public:
         : filePath(file), specificKey(key), commands(cmds) {}
     ~SelectionOverlay() {}
 
+    std::pair<std::string, int> dispCustData(const std::string jsonPath) {
+
+        std::string custOffset = "";
+        std::string currentHex = "";
+        std::string extent = "";
+        std::string output = "";
+        std::string state = "";
+        std::string name = "";
+        std::string offset  = "";
+        bool allign = false;
+        int length = 0;
+        int lineCount = 1;
+
+        if (!isFileOrDirectory(jsonPath)) {
+            return std::make_pair(output, lineCount);
+        }
+        json_t* jsonData = readJsonFromFile(jsonPath);
+        if (jsonData) {
+            size_t arraySize = json_array_size(jsonData);
+
+            std::vector<std::string> offsetStrs = findHexDataOffsets("/atmosphere/kips/loader.kip", "43555354"); // 43555354 is a CUST
+            custOffset = offsetStrs[0];
+            FILE* file = fopen("/atmosphere/kips/loader.kip", "rb");
+            if (!file) {
+                logMessage("Failed to open the file.");
+                return std::make_pair(output, lineCount);
+            }
+
+            for (size_t i = 0; i < arraySize; ++i) {
+                json_t* item = json_array_get(jsonData, i);
+                if (item && json_is_object(item)) {
+                    json_t* keyValue = json_object_get(item, "name");
+                    if (keyValue && json_is_string(keyValue)) {
+                        json_t* j_offset = json_object_get(item, "offset");
+                        json_t* j_length = json_object_get(item, "length");
+                        json_t* j_extent = json_object_get(item, "extent");
+
+                        json_t* j_state = json_object_get(item, "state");
+                        if (j_state) {
+                            state = json_string_value(j_state);
+                        } else {
+                            state = "";
+                        }
+
+                        if (state != "filler" || state.empty()) {
+                            if (!j_offset || !j_length) {
+                                return std::make_pair(output, lineCount);
+                            }
+                            name = json_string_value(keyValue);
+                            offset = json_string_value(j_offset);
+                            length = std::stoi(json_string_value(j_length));
+                            if (j_extent)
+                                extent = json_string_value(j_extent);
+                            else extent = "";
+
+                            if (offset.find(',') != std::string::npos) {
+                                std::istringstream iss(offset);
+                                std::string item;
+                                std::vector<std::string> items;
+
+                                // Split the string by commas and store each item in a vector
+                                while (std::getline(iss, item, ',')) {
+                                    items.push_back(item);
+                                }
+
+                                currentHex = "";
+                                for (const std::string& item : items) {
+                                    std::string tempHex = readHexDataAtOffsetF(file, custOffset, "43555354", item.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
+                                    unsigned int intValue = reversedHexToInt(tempHex);
+                                    currentHex += std::to_string(intValue) + '-';
+                                }
+                                currentHex.pop_back();
+                                output += name + ": " + currentHex;
+                            } else {
+                                currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
+
+                                if (allign) {
+                                    size_t found = output.rfind('\n');
+                                    logMessage("output.length(): " + std::to_string(output.length()));
+                                    logMessage("found = " + std::to_string(found));
+
+                                    int numreps = 30 - (output.length() - found - 1) - name.length() - length - 2;
+                                    if (!extent.empty()) {
+                                        numreps -= extent.length();
+                                    }
+                                    logMessage("numreps" + std::to_string(numreps));
+                                    output.append(numreps, ' ');
+                                    allign = false;
+                                }
+                                unsigned int intValue = reversedHexToInt(currentHex);
+                                output += name + ": " + std::to_string(intValue).substr(0, length);
+                            }
+
+                            if (!extent.empty()) {
+                                output += " " + extent;
+                            }
+                            if (state != "no_skip"){
+                                output += '\n';
+                                lineCount++;
+                            } else {
+                                // output += "   ";
+                                allign = true;
+                            }
+                        } else {
+                            std::string name = json_string_value(keyValue);
+                            output += '\n';
+                            lineCount++;
+                            output += name;
+                            output += '\n';
+                            lineCount++;
+                        }
+                    }
+                }
+            }
+            logMessage(output);
+        }
+        return std::make_pair(output, lineCount);
+    }
+
     virtual tsl::elm::Element* createUI() override {
         auto rootFrame = new tsl::elm::OverlayFrame(getNameWithoutPrefix(getNameFromPath(filePath)), "Uberhand Package");
         auto list = new tsl::elm::List();
 
         // Extract the path pattern from commands
+        bool kipInfo = false;
         bool useJson = false;
         bool useText = false;
         bool useToggle = false;
@@ -165,6 +285,9 @@ public:
                         jsonKey = cmd[2]; //json display key
                     }
                     useJson = true;
+                } else if (cmd[0] == "kip_info") {
+                    jsonPath = preprocessPath(cmd[1]);
+                    kipInfo = true;
                 } else if (cmd[0] == "json_mark_current") {
                     jsonPath = preprocessPath(cmd[1]);
                     if (cmd.size() > 2) {
@@ -184,7 +307,35 @@ public:
 
         // Get the list of files matching the pattern
         if (!useToggle) {
-            if (useText) {
+            if (kipInfo) {
+                if (!isFileOrDirectory(jsonPath)) {
+                    list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
+                    renderer->drawString("TMPL file not found. Contact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
+                    }), fontSize + lineHeight);
+                    rootFrame->setContent(list);
+                    return rootFrame;
+                } else {
+                    textDataPair = dispCustData(jsonPath);
+                    std::string textdata = textDataPair.first;
+                    int textsize = textDataPair.second;
+                    if (!textdata.empty()) {
+                        list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize, textdata](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
+                        renderer->drawString(textdata.c_str(), false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText), 350);
+                        }), fontSize * textsize + lineHeight);
+                        auto listItem = new tsl::elm::ListItem("Back");
+                        listItem->setClickListener([](uint64_t keys) { // Add 'command' to the capture list
+                        if (keys & KEY_A) {
+                            tsl::goBack();
+                            return true;
+                        }
+                            return false;
+                        });
+                        list->addItem(listItem);
+                        rootFrame->setContent(list);
+                        return rootFrame;
+                    }
+                }
+            } else if (useText) {
                 if (!isFileOrDirectory(textPath)) {
                     list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
                     renderer->drawString("Text file not found. Contact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));

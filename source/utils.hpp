@@ -603,7 +603,7 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
 }
 
 tsl::PredefinedColors defineColor(std::string strColor) {
-    logMessage ("string color: " + strColor);
+    // logMessage ("string color: " + strColor);
     if (strColor == "Green") {
         return tsl::PredefinedColors::Green;
     } else if (strColor == "Red") {
