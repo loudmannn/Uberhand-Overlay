@@ -39,7 +39,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 APP_TITLE	:= Uberhand
 APP_AUTHOR	:= efosamark, i3sey, irne
-APP_VERSION	:= 1.1
+APP_VERSION	:= 1.1.0
 TARGET	    := ovlmenu
 BUILD	    := build
 SOURCES	    := source common 
