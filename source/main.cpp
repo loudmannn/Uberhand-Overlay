@@ -160,8 +160,8 @@ public:
                         json_t* j_offset = json_object_get(item, "offset");
                         json_t* j_length = json_object_get(item, "length");
                         json_t* j_extent = json_object_get(item, "extent");
-
                         json_t* j_state = json_object_get(item, "state");
+
                         if (j_state) {
                             state = json_string_value(j_state);
                         } else {
@@ -181,17 +181,17 @@ public:
 
                             if (offset.find(',') != std::string::npos) {
                                 std::istringstream iss(offset);
-                                std::string item;
-                                std::vector<std::string> items;
+                                std::string offsetItem;
+                                std::vector<std::string> offsetList;
 
-                                // Split the string by commas and store each item in a vector
-                                while (std::getline(iss, item, ',')) {
-                                    items.push_back(item);
+                                // Split the string by commas and store each offset in a vector
+                                while (std::getline(iss, offsetItem, ',')) {
+                                    offsetList.push_back(offsetItem);
                                 }
 
                                 currentHex = "";
-                                for (const std::string& item : items) {
-                                    std::string tempHex = readHexDataAtOffsetF(file, custOffset, "43555354", item.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
+                                for (const std::string& offsetItem : offsetList) {
+                                    std::string tempHex = readHexDataAtOffsetF(file, custOffset, "43555354", offsetItem.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
                                     unsigned int intValue = reversedHexToInt(tempHex);
                                     currentHex += std::to_string(intValue) + '-';
                                 }
@@ -203,26 +203,22 @@ public:
                                     checkDefault = std::stoi(json_string_value(j_default));
                                     if (checkDefault == 1) {
                                         std::string offsetDef = std::to_string(std::stoi(offset) + length);
-                                        currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offsetDef.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
+                                        currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offsetDef.c_str(), length); // Read next <length> hex chars from specified offset
                                     }
                                 } else {
                                     currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
                                 }
                                 if (allign) {
+                                    // Format the string to have two columns; Calculate number of spaces needed
                                     size_t found = output.rfind('\n');
-                                    // logMessage("output.length(): " + std::to_string(output.length()));
-                                    // logMessage("found = " + std::to_string(found));
-
                                     int numreps = 33 - (output.length() - found - 1) - name.length() - length - 2;
                                     if (!extent.empty()) {
                                         numreps -= extent.length();
                                     }
-                                    // logMessage("numreps" + std::to_string(numreps));
                                     output.append(numreps, ' ');
                                     allign = false;
                                 }
                                 
-                                // currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
                                 logMessage("currentHex = " + currentHex);
                                 if (checkDefault && currentHex != "000000") {
                                     output += name + ": " + "Default";
@@ -244,7 +240,7 @@ public:
                             } else {
                                 allign = true;
                             }
-                        } else {
+                        } else { // When state = filler
                             std::string name = json_string_value(keyValue);
                             output += '\n';
                             lineCount++;
@@ -265,7 +261,6 @@ public:
         auto rootFrame = new tsl::elm::OverlayFrame(getNameWithoutPrefix(getNameFromPath(filePath)), "Uberhand Package");
         auto list = new tsl::elm::List();
 
-        // Extract the path pattern from commands
         bool kipInfo = false;
         bool useJson = false;
         bool useText = false;
