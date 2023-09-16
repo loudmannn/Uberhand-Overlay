@@ -181,7 +181,7 @@ bool isMarikoHWType()
         return false;
     }
 
-    logMessage("INFO: HardwareType: " + std::to_string(hardware_type));
+    // logMessage("INFO: HardwareType: " + std::to_string(hardware_type));
 
     switch (hardware_type) {
     case 0: // Icosa

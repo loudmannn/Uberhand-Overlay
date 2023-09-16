@@ -219,7 +219,6 @@ public:
                                     allign = false;
                                 }
                                 
-                                logMessage("currentHex = " + currentHex);
                                 if (checkDefault && currentHex != "000000") {
                                     output += name + ": " + "Default";
                                     extent = "";
@@ -251,7 +250,6 @@ public:
                     }
                 }
             }
-            logMessage(output);
             fclose(file);
         }
         return std::make_pair(output, lineCount);
