@@ -226,6 +226,8 @@ public:
                                     unsigned int intValue = reversedHexToInt(currentHex);
                                     if (offset == "32") { // If got RAM MHz- adjust to 4IFIR value
                                         intValue += 200000;
+                                    } else if (offset == "16") { // If got Vdd2- adjust to 4IFIR value
+                                        intValue += 100000;
                                     }
                                     output += name + ": " + std::to_string(intValue).substr(0, length);
                                 }
