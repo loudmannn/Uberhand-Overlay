@@ -205,8 +205,6 @@ public:
                                         std::string offsetDef = std::to_string(std::stoi(offset) + length);
                                         currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offsetDef.c_str(), length); // Read next <length> hex chars from specified offset
                                     }
-                                } else {
-                                    currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
                                 }
                                 if (allign) {
                                     // Format the string to have two columns; Calculate number of spaces needed
@@ -226,6 +224,11 @@ public:
                                 } else {
                                     currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
                                     unsigned int intValue = reversedHexToInt(currentHex);
+                                    logMessage(offset);
+                                    logMessage(std::to_string(intValue));
+                                    if (offset == "32") {
+                                        intValue += 200000;
+                                    }
                                     output += name + ": " + std::to_string(intValue).substr(0, length);
                                 }
                             }
