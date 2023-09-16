@@ -258,7 +258,7 @@ public:
     }
 
     virtual tsl::elm::Element* createUI() override {
-        auto rootFrame = new tsl::elm::OverlayFrame(getNameFromPath(filePath), "Uberhand Package");
+        auto rootFrame = new tsl::elm::OverlayFrame(getNameWithoutPrefix(getNameFromPath(filePath)), "Uberhand Package");
         auto list = new tsl::elm::List();
 
         bool kipInfo = false;
@@ -616,12 +616,18 @@ public:
     ~SubMenu() {}
 
     virtual tsl::elm::Element* createUI() override {
-        auto rootFrame = new tsl::elm::OverlayFrame(getNameFromPath(subPath), package);
+        std::string viewPackage = getNameWithoutPrefix(package);
+        std::string viewsubPath = getNameWithoutPrefix(getNameFromPath(subPath));
+        std::vector<std::string> subdirectories = getSubdirectories(subPath);
+
+        auto rootFrame = new tsl::elm::OverlayFrame(getNameFromPath(viewsubPath), viewPackage);
         auto list = new tsl::elm::List();
 
-        for(const auto& subDirectory : getSubdirectories(subPath)){
+        std::sort(subdirectories.begin(), subdirectories.end());
+        
+        for(const auto& subDirectory : subdirectories){
             if(isFileOrDirectory(subPath + subDirectory + '/' + configFileName)){
-                auto item = new tsl::elm::ListItem(subDirectory);
+                auto item = new tsl::elm::ListItem(getNameWithoutPrefix(subDirectory));
                 item->setValue("\u25B6", tsl::PredefinedColors::White);
                 item->setClickListener([&,subDirectory](u64 keys)->bool{
                     if(keys & KEY_A){
@@ -855,9 +861,10 @@ public:
 
     tsl::elm::Element* createUI() override {
         package = getNameFromPath(subPath);
-        logMessage(subPath+' '+package);
+        
+        //logMessage(subPath+' '+package);
         auto rootFrame = static_cast<tsl::elm::OverlayFrame*>(SubMenu::createUI());
-        rootFrame->setTitle(package);
+        rootFrame->setTitle(getNameWithoutPrefix(package));
         rootFrame->setSubtitle("                             "); // FIXME: former subtitle is not fully erased if new string is shorter
         return rootFrame;
     }
@@ -1035,10 +1042,12 @@ public:
                 //bool usingStar = false;
                 std::string subdirectory = taintedSubdirectory;
                 std::string subdirectoryIcon = "";
+
                 if (subdirectory.find("0_") == 0) {
                     subdirectory = subdirectory.substr(2); // Remove "0_" from the beginning
                     subdirectoryIcon = "\u2605 ";
                 }
+
                 std::string subPath = packageDirectory + subdirectory + "/";
                 std::string configFilePath = subPath + "config.ini";
             
@@ -1049,7 +1058,7 @@ public:
                         list->addItem(new tsl::elm::CategoryHeader("Packages"));
                     }
                     
-                    auto listItem = new tsl::elm::ListItem(subdirectoryIcon + subdirectory);
+                    auto listItem = new tsl::elm::ListItem(subdirectoryIcon + getNameWithoutPrefix(subdirectory));
                     listItem->setValue(packageHeader.version);
             
                     listItem->setClickListener([this, subPath = packageDirectory + subdirectory + "/"](uint64_t keys) {
