@@ -38,7 +38,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #   NACP building is skipped as well. #lib/Atmosphere-libs/libexosphere/source/pmic
 #---------------------------------------------------------------------------------
 APP_TITLE	:= Uberhand
-APP_AUTHOR	:= efosamark, i3sey, irne
+APP_AUTHOR	:= ppkantorski, efosamark, i3sey, irne
 APP_VERSION	:= 1.1.0
 TARGET	    := ovlmenu
 BUILD	    := build
