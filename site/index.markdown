@@ -11,3 +11,11 @@ Uberhand is a rework of Ultrahand Overlay, that provides expanded functionality,
 
 {: .note }
 Uberhand is a fork, original repository [here](https://github.com/ppkantorski/Ultrahand-Overlay).
+
+> # Uberhand 1.1.0
+## What's New
+1. [Added support for different configurations by console revisions by @IrneRacoonovich]({{ site.baseurl }}{% link docs/Features/SoC-based-Commands.md %})
+2. [Added ability to set color for JSON items by @efosamark]({{ site.baseurl }}{% link docs/Features/Color.md %})
+3. [Added new command to display info from loader.kip by @efosamark]({{ site.baseurl }}{% link docs/Filesystem/info.md %})
+4. [Added directory-menu items sorting by @i3sey]({{ site.baseurl }}{% link docs/Features/sorting.md %})
+5. [Added separator support by @IrneRacoonovich]({{ site.baseurl }}{% link docs/Features/separator.md %})
