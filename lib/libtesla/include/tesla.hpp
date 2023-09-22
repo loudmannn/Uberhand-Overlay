@@ -1612,8 +1612,8 @@ namespace tsl {
              * @param subtitle Subtitle drawn bellow the title e.g version number
              */
             std::string m_menuMode; // CUSTOM MODIFICATION
-            OverlayFrame(const std::string& title, const std::string& subtitle, const std::string& menuMode = "")
-                : Element(), m_menuMode(menuMode), m_title(title), m_subtitle(subtitle) {} // CUSTOM MODIFICATION
+            OverlayFrame(const std::string& title, const std::string& subtitle, const std::string& menuMode = "", bool help = false)
+                : Element(), m_menuMode(menuMode), m_title(title), m_subtitle(subtitle), m_help(help) {} // CUSTOM MODIFICATION
 
             virtual ~OverlayFrame() {
                 if (this->m_contentElement != nullptr)
@@ -1655,6 +1655,8 @@ namespace tsl {
                     menuBottomLine += "\uE0ED  Overlays";
                 } else if (this->m_menuMode == "overlays") {
                     menuBottomLine += "\uE0EE  Packages";
+                } else if (m_help) {
+                    menuBottomLine += "\uE0E3  Help";
                 }
                 
                 renderer->drawString(menuBottomLine.c_str(), false, 30, 693, 23, a(tsl::style::color::ColorText));
@@ -1729,6 +1731,7 @@ namespace tsl {
             Element *m_contentElement = nullptr;
 
             std::string m_title, m_subtitle;
+            bool m_help;
         };
 
         /**
