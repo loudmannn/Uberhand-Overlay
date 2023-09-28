@@ -674,11 +674,11 @@ public:
             deleted = false;
             return true;
         } else if (resetValue && keysDown) {
-            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
-            if (focusedItem->getValue() == "APPLIED"){
-                focusedItem->setValue(prevValue);
-                prevValue = "";
-                resetValue = false;
+        tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
+        if (focusedItem->getValue() == "APPLIED"){
+            focusedItem->setValue(prevValue);
+            prevValue = "";
+            resetValue = false;
             }
             return true;
         }
@@ -1018,7 +1018,7 @@ private:
     tsl::hlp::ini::IniData settingsData;
     std::string packageConfigIniPath = packageDirectory + configFileName;
     std::string menuMode, defaultMenuMode, inOverlayString, fullPath, optionName;
-    bool useDefaultMenu = false;
+    bool useDefaultMenu = false, showOverlayVersions = false, showPackageVersions = true;
 public:
     MainMenu() {}
     ~MainMenu() {}
@@ -1044,6 +1044,12 @@ public:
                             settingsLoaded = true;
                         }
                     }
+                }
+                if (ultrahandSection.count("show_ovl_versions") > 0) {
+                    showOverlayVersions = true;
+                }
+                if ((ultrahandSection.count("show_pack_versions") == 0)) {
+                    showPackageVersions = false;
                 }
             }
         }
@@ -1110,7 +1116,8 @@ public:
                     }
                     
                     auto* listItem = new tsl::elm::ListItem(overlayName);
-                    // listItem->setValue(overlayVersion);
+                    if (showOverlayVersions)
+                        listItem->setValue(overlayVersion);
 
                     // Add a click listener to load the overlay when clicked upon
                     listItem->setClickListener([overlayFile](s64 key) {
@@ -1194,7 +1201,8 @@ public:
                     }
                     
                     auto listItem = new tsl::elm::ListItem(subdirectoryIcon + getNameWithoutPrefix(subdirectory));
-                    listItem->setValue(packageHeader.version);
+                    if (showPackageVersions)
+                        listItem->setValue(packageHeader.version);
             
                     listItem->setClickListener([this, subPath = packageDirectory + subdirectory + "/"](uint64_t keys) {
                         if (keys & KEY_A) {

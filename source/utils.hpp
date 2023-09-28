@@ -665,7 +665,6 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                     json_t* j_extent    = json_object_get(item, "extent");
                     json_t* j_state     = json_object_get(item, "state");
                     json_t* j_increment = json_object_get(item, "increment");
-                    json_t* j_decrement = json_object_get(item, "decrement");
 
                     if (j_state) {
                         state = json_string_value(j_state);
