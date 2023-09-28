@@ -631,6 +631,8 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
     std::string state = "";
     std::string name = "";
     std::string offset  = "";
+    std::string increment  = "";
+    std::string decrement  = "";
     bool allign = false;
     int checkDefault = 0;
     int length = 0;
@@ -658,10 +660,12 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
             if (item && json_is_object(item)) {
                 json_t* keyValue = json_object_get(item, "name");
                 if (keyValue && json_is_string(keyValue)) {
-                    json_t* j_offset = json_object_get(item, "offset");
-                    json_t* j_length = json_object_get(item, "length");
-                    json_t* j_extent = json_object_get(item, "extent");
-                    json_t* j_state = json_object_get(item, "state");
+                    json_t* j_offset    = json_object_get(item, "offset");
+                    json_t* j_length    = json_object_get(item, "length");
+                    json_t* j_extent    = json_object_get(item, "extent");
+                    json_t* j_state     = json_object_get(item, "state");
+                    json_t* j_increment = json_object_get(item, "increment");
+                    json_t* j_decrement = json_object_get(item, "decrement");
 
                     if (j_state) {
                         state = json_string_value(j_state);
@@ -725,10 +729,8 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                             } else {
                                 currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
                                 unsigned int intValue = reversedHexToInt(currentHex);
-                                if (offset == "32") { // If got RAM MHz- adjust to 4IFIR value
-                                    intValue += 200000;
-                                } else if (offset == "16") { // If got Vdd2- adjust to 4IFIR value
-                                    intValue += 100000;
+                                if (j_increment) { // If got RAM MHz- adjust to 4IFIR value
+                                    intValue += std::stoi(json_string_value(j_increment));
                                 }
                                 output += name + ": " + std::to_string(intValue).substr(0, length);
                             }
