@@ -674,11 +674,11 @@ public:
             deleted = false;
             return true;
         } else if (resetValue && keysDown) {
-        tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
-        if (focusedItem->getValue() == "APPLIED"){
-            focusedItem->setValue(prevValue);
-            prevValue = "";
-            resetValue = false;
+            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
+            if (focusedItem->getValue() == "APPLIED") {
+                focusedItem->setValue(prevValue);
+                prevValue = "";
+                resetValue = false;
             }
             return true;
         }
