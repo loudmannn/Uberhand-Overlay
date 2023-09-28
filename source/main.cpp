@@ -1055,7 +1055,6 @@ public:
                 } else {
                     setIniFileValue(settingsConfigIniPath, "ultrahand", "show_pack_versions", "true");
                 }
-                logMessage("show_pack_versions" + std::to_string(showPackageVersions));
             }
         }
         if (!settingsLoaded) { // write data if settings are not loaded
