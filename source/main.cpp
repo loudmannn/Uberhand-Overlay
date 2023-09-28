@@ -1045,12 +1045,17 @@ public:
                         }
                     }
                 }
-                if (ultrahandSection.count("show_ovl_versions") > 0) {
+                if (ultrahandSection["show_ovl_versions"] == "true") {
                     showOverlayVersions = true;
+                } else {
+                    setIniFileValue(settingsConfigIniPath, "ultrahand", "show_ovl_versions", "false");
                 }
-                if ((ultrahandSection.count("show_pack_versions") == 0)) {
+                if (ultrahandSection["show_pack_versions"] == "false") {
                     showPackageVersions = false;
+                } else {
+                    setIniFileValue(settingsConfigIniPath, "ultrahand", "show_pack_versions", "true");
                 }
+                logMessage("show_pack_versions" + std::to_string(showPackageVersions));
             }
         }
         if (!settingsLoaded) { // write data if settings are not loaded
