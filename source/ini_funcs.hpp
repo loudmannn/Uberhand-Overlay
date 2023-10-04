@@ -499,3 +499,36 @@ std::string readIniValue(std::string filePath, std::string section, std::string 
 
     return ""; // Key not found
 }
+
+ std::vector<std::vector<int>> parseIntIniData (std::string input) {
+    // Remove outer brackets
+    input = input.substr(5, input.length() - 3);
+
+    // Create a stringstream for parsing
+    std::stringstream ss(input);
+
+    // Vector to store arrays
+    std::vector<std::vector<int>> result;
+
+    char openBracket, comma1, comma2, closeBracket;
+    bool isFirstItem = true; // Flag to skip the first item
+
+    while (ss >> openBracket) {
+        if (openBracket == '[') {
+            std::vector<int> array(4);
+            ss >> array[0] >> comma1 >> array[1] >> comma2 >> array[2] >> comma1 >> array[3] >> closeBracket;
+            
+            // Check if it's not the first item and then add to the result
+            if (!isFirstItem) {
+                result.push_back(array);
+            } else {
+                isFirstItem = false;
+            }
+        } else if (openBracket == ',') {
+            continue;
+        }
+    }
+
+
+    return result;
+}

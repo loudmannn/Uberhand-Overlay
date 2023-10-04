@@ -264,6 +264,7 @@ public:
         bool useJson = false;
         bool useText = false;
         bool useToggle = false;
+        bool useSlider = false;
         bool useSplitHeader = false;
         bool markCurKip = false;
         bool markCurIni = false;
@@ -330,13 +331,28 @@ public:
                         markCurIni = true;
                     }
                 } else if (cmd[0] == "text_source") {
-                        textPath = preprocessPath(cmd[1]);
-                        useText = true;
+                    textPath = preprocessPath(cmd[1]);
+                    useText = true;
+                } else if (cmd[0] == "slider_ini") {
+                    sourceIni  = preprocessPath(cmd[1]);
+                    useSlider = true;
                 }
             } 
         }
 
         // Get the list of files matching the pattern
+        if (useSlider) {
+            if (!isFileOrDirectory(sourceIni)) {
+                list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
+                    renderer->drawString("INI file not found.\nContact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
+                    }), fontSize + lineHeight);
+                    rootFrame->setContent(list);
+                    return rootFrame;
+            } else {
+                 std::vector<std::vector<int>> iniValues = parseIntIniData(readIniValue(sourceIni, "tc", "tskin_rate_table_console_on_fwdbg"));
+                 logMessage(readIniValue("/atmosphere/config/system_settings.ini", "tc", "tskin_rate_table_console_on_fwdbg"));
+            }
+        }
         if (!useToggle) {
             if (useText) {
                 if (!isFileOrDirectory(textPath)) {
