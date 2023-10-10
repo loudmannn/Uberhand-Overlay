@@ -49,7 +49,10 @@ const std::string packageDirectory = "sdmc:/switch/.packages/";
 const std::string overlayDirectory = "sdmc:/switch/.overlays/";
 const std::string teslaSettingsConfigIniPath = "sdmc:/config/tesla/"+configFileName;
 
-
+bool applied = false;
+bool deleted = false;
+bool resetValue = false;
+std::string prevValue = "";
 
 void copyTeslaKeyComboToUltraHand() {
     std::string keyCombo;
