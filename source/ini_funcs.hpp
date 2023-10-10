@@ -502,7 +502,7 @@ std::string readIniValue(std::string filePath, std::string section, std::string 
 
  std::vector<std::vector<int>> parseIntIniData (std::string input) {
     // Remove outer brackets
-    input = input.substr(5, input.length() - 3);
+    input = input.substr(6, input.length() - 3);
 
     // Create a stringstream for parsing
     std::stringstream ss(input);

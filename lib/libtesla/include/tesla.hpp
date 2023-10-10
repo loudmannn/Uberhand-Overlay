@@ -1532,6 +1532,8 @@ namespace tsl {
 
             static void setInputMode(InputMode mode) { Element::s_inputMode = mode; }
 
+            virtual std::string getClass() {return "Element";}
+
         protected:
             constexpr static inline auto a = &gfx::Renderer::a;
             bool m_focused = false;
@@ -2144,6 +2146,10 @@ namespace tsl {
                     this->updateScrollOffset();
                 }
             }
+            
+            virtual size_t getSize() {
+                return this->m_items.size();
+            }
 
         protected:
             std::vector<Element*> m_items;
@@ -2391,6 +2397,9 @@ namespace tsl {
                 return this->m_value;
             }
 
+            virtual std::string getClass() {
+                return "ListItem";
+            }
         protected:
             std::string m_text;
             std::string m_value = "";
@@ -2531,6 +2540,49 @@ namespace tsl {
             bool m_hasSeparator;
         };
 
+        class CustomHeader : public Element {
+        public:
+            CustomHeader(const std::string &title, bool hasSeparator = false) : m_text(title), m_hasSeparator(hasSeparator) {}
+            virtual ~CustomHeader() {}
+
+            virtual void draw(gfx::Renderer *renderer) override {
+                // renderer->drawRect(this->getX() - 2, this->getBottomBound() - 30, 5, 23, a(tsl::style::color::ColorHeaderBar));
+                renderer->drawString(this->m_text.c_str(), false, this->getX() + 13, this->getBottomBound() - 20, 19, a(tsl::style::color::ColorText)); // false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText)
+            }
+
+            virtual void layout(u16 parentX, u16 parentY, u16 parentWidth, u16 parentHeight) override {
+                // Check if the CategoryHeader is part of a list and if it's the first entry in it, half it's height
+                if (List *list = dynamic_cast<List*>(this->getParent()); list != nullptr) {
+                    if (list->getIndexInList(this) == 0) {
+                        this->setBoundaries(this->getX(), this->getY(), this->getWidth(), tsl::style::ListItemDefaultHeight / 2);
+                        return;
+                    }
+                }
+
+                this->setBoundaries(this->getX(), this->getY(), this->getWidth(), tsl::style::ListItemDefaultHeight);
+            }
+
+            virtual bool onClick(u64 keys) {
+                return false;
+            }
+
+            virtual Element* requestFocus(Element *oldFocus, FocusDirection direction) override {
+                return nullptr;
+            }
+
+            inline void setText(const std::string &text) {
+                this->m_text = text;
+            }
+
+            inline const std::string& getText() const {
+                return this->m_text;
+            }
+
+        private:
+            std::string m_text;
+            bool m_hasSeparator;
+        };
+
         /**
          * @brief A customizable analog trackbar going from 0% to 100% (like the brightness slider)
          *
@@ -2605,19 +2657,19 @@ namespace tsl {
             }
 
             virtual void draw(gfx::Renderer *renderer) override {
-                renderer->drawRect(this->getX(), this->getY(), this->getWidth(), 1, a(tsl::style::color::ColorFrame));
-                renderer->drawRect(this->getX(), this->getBottomBound(), this->getWidth(), 1, a(tsl::style::color::ColorFrame));
+                renderer->drawRect(this->getX(), this->getY(), this->getWidth() - 20 , 1, a(tsl::style::color::ColorFrame));
+                renderer->drawRect(this->getX(), this->getBottomBound(), this->getWidth()- 20, 1, a(tsl::style::color::ColorFrame));
 
                 renderer->drawString(this->m_icon, false, this->getX() + 15, this->getY() + 50, 23, a(tsl::style::color::ColorText));
 
-                u16 handlePos = (this->getWidth() - 95) * static_cast<float>(this->m_value) / 100;
-                renderer->drawCircle(this->getX() + 60, this->getY() + 42, 2, true, a(tsl::style::color::ColorHighlight));
-                renderer->drawCircle(this->getX() + 60 + this->getWidth() - 95, this->getY() + 42, 2, true, a(tsl::style::color::ColorFrame));
-                renderer->drawRect(this->getX() + 60 + handlePos, this->getY() + 40, this->getWidth() - 95 - handlePos, 5, a(tsl::style::color::ColorFrame));
-                renderer->drawRect(this->getX() + 60, this->getY() + 40, handlePos, 5, a(tsl::style::color::ColorHighlight));
+                u16 handlePos = (this->getWidth() - 20) * static_cast<float>(this->m_value) / 100;
+                renderer->drawCircle(this->getX() + 10, this->getY() + 42, 2, true, a(tsl::style::color::ColorHighlight));
+                renderer->drawCircle(this->getX() + 10 + this->getWidth(), this->getY() + 42, 2, true, a(tsl::style::color::ColorFrame));
+                renderer->drawRect(this->getX() + 10 + handlePos, this->getY() + 40, this->getWidth() - 95 - handlePos, 5, a(tsl::style::color::ColorFrame));
+                renderer->drawRect(this->getX() + 10, this->getY() + 40, handlePos, 5, a(tsl::style::color::ColorHighlight));
 
-                renderer->drawCircle(this->getX() + 62 + handlePos, this->getY() + 42, 18, true, a(tsl::style::color::ColorHandle));
-                renderer->drawCircle(this->getX() + 62 + handlePos, this->getY() + 42, 18, false, a(tsl::style::color::ColorFrame));
+                renderer->drawCircle(this->getX() + 10 + handlePos, this->getY() + 42, 10, true, a(tsl::style::color::ColorHandle));
+                renderer->drawCircle(this->getX() + 10 + handlePos, this->getY() + 42, 10, true, a(tsl::style::color::ColorError));
             }
 
             virtual void layout(u16 parentX, u16 parentY, u16 parentWidth, u16 parentHeight) override {
@@ -2638,7 +2690,7 @@ namespace tsl {
 
                 counter += 0.1F;
 
-                u16 handlePos = (this->getWidth() - 95) * static_cast<float>(this->m_value) / 100;
+                u16 handlePos = (this->getWidth() - 20) * static_cast<float>(this->m_value) / 100;
 
                 s32 x = 0;
                 s32 y = 0;
@@ -2672,8 +2724,8 @@ namespace tsl {
                     }
                 }
 
-                for (u8 i = 16; i <= 19; i++) {
-                    renderer->drawCircle(this->getX() + 62 + x + handlePos, this->getY() + 42 + y, i, false, a(highlightColor));
+                for (u8 i = 12; i <= 15; i++) {
+                    renderer->drawCircle(this->getX() + 10 + x + handlePos, this->getY() + 42 + y, i, true, a(highlightColor));
                 }
             }
 
@@ -2703,7 +2755,10 @@ namespace tsl {
             void setValueChangedListener(std::function<void(u8)> valueChangedListener) {
                 this->m_valueChangedListener = valueChangedListener;
             }
-
+            
+            virtual std::string getClass() {
+                return "TrackBar";
+            }
         protected:
             const char *m_icon = nullptr;
             s16 m_value = 0;
@@ -2830,13 +2885,13 @@ namespace tsl {
                 u16 stepWidth = trackBarWidth / (this->m_numSteps - 1);
 
                 for (u8 i = 0; i < this->m_numSteps; i++) {
-                    renderer->drawRect(this->getX() + 60 + stepWidth * i, this->getY() + 50, 1, 10, a(tsl::style::color::ColorFrame));
+                    renderer->drawRect(this->getX() + 40 + stepWidth * i, this->getY() + 50, 1, 10, a(tsl::style::color::ColorFrame));
                 }
 
                 u8 currentDescIndex = std::clamp(this->m_value / (100 / (this->m_numSteps - 1)), 0, this->m_numSteps - 1);
 
-                auto [descWidth, descHeight] = renderer->drawString(this->m_stepDescriptions[currentDescIndex].c_str(), false, 0, 0, 15, tsl::style::color::ColorTransparent);
-                renderer->drawString(this->m_stepDescriptions[currentDescIndex].c_str(), false, ((this->getX() + 60) + (this->getWidth() - 95) / 2) - (descWidth / 2), this->getY() + 20, 15, a(tsl::style::color::ColorDescription));
+                auto [descWidth, descHeight] = renderer->drawString(this->m_stepDescriptions[currentDescIndex].c_str(), false, 0, 0, 19, tsl::style::color::ColorTransparent);
+                renderer->drawString(this->m_stepDescriptions[currentDescIndex].c_str(), false, ((this->getX() + 60) + (this->getWidth() - 95) / 2) - (descWidth / 2), this->getY() + 20, 19, a(tsl::style::color::ColorDescription));
 
                 StepTrackBar::draw(renderer);
             }

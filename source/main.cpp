@@ -349,8 +349,50 @@ public:
                     rootFrame->setContent(list);
                     return rootFrame;
             } else {
-                 std::vector<std::vector<int>> iniValues = parseIntIniData(readIniValue(sourceIni, "tc", "tskin_rate_table_console_on_fwdbg"));
-                 logMessage(readIniValue("/atmosphere/config/system_settings.ini", "tc", "tskin_rate_table_console_on_fwdbg"));
+                std::vector<std::vector<int>> iniValues = parseIntIniData(readIniValue(sourceIni, "tc", "tskin_rate_table_console_on_fwdbg"));
+                // logMessage(readIniValue("/atmosphere/config/system_settings.ini", "tc", "tskin_rate_table_console_on_fwdbg"));
+                // logMessage(std::to_string(iniValues.size()));
+                for (const auto& arr : iniValues) {
+                    std::string low = arr[0] < 0 ? "0" : std::to_string(arr[0]/1000) + "°C";
+                    std::string high = arr[1] > 100000 ? "100°C" : std::to_string((arr[1]/1000) - 1) + "°C";
+                    std::string header = "Fan speed at " + low + " - " + high + ": ";
+                    // auto catHeader = new tsl::elm::CustomHeader(header);
+                    // list->addItem(catHeader);
+
+                    double stepSize = 0.05 * 255;
+                    int percentage = 0;
+                    // logMessage(std::to_string(arr[3]));
+                    if (arr[3] > 0) {
+                        percentage = static_cast<int>(ceil(arr[3] / stepSize));
+                    }
+                    logMessage(std::to_string((percentage)));
+                    // logMessage("end");
+
+                    auto slider = new tsl::elm::NamedStepTrackBar(" ",{header + "0%", header + "5%", header + "10%", header + "15%", header + "20%", header + "25%", header + "30%", header + "35%", header + "40%", header + "45%", header + "50%", header + "55%", header + "60%", header + "65%", header + "70%", header + "75%", header + "80%", header + "85%", header + "90%", header + "95%", header+"100%"});
+
+                    slider->setProgress(percentage);
+                    slider->setClickListener([this, list](uint64_t keys) { // Add 'command' to the capture list
+                        if (keys & KEY_A) {
+                            // vector<int> values;
+                            size_t listSize = list->getSize();
+                            for (size_t i = 0; i < listSize; i++) {
+                                if (list->getItemAtIndex(i)->getClass()  == "TrackBar") {
+                                    logMessage(std::to_string(int(double(dynamic_cast<tsl::elm::StepTrackBar*>(list->getItemAtIndex(i))->getProgress())/100*255)));
+                                    // values.insert((dynamic_cast<tsl::elm::StepTrackBar*>(list->getItemAtIndex(i))->getProgress())/100*255);
+                                }
+                            }
+                            // logMessage(std::to_string(listSize));
+                            applied = true;
+                            // logMessage(this->getFocusedElement()->getClass());
+                            tsl::goBack();
+                            return true;
+                        }
+                        return false;
+                    });
+                    list->addItem(slider);
+                }
+                rootFrame->setContent(list);
+                return rootFrame;
             }
         }
         if (!useToggle) {
@@ -547,6 +589,12 @@ public:
                     listItem->setValue(footer);
                     listItem->setClickListener([count, this, listItem, helpPath](uint64_t keys) { // Add 'command' to the capture list
                         if (keys & KEY_A) {
+                            logMessage(listItem->getValue());
+                            if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
+                                listItem->setValue(prevValue);
+                                prevValue = "";
+                                resetValue = false;
+                            }
                             // Replace "{json_source}" with file in commands, then execute
                             if (listItem->getValue() != "DELETED") {
                                 std::string countString = std::to_string(count);
@@ -602,6 +650,12 @@ public:
                     if (!listBackups) {
                         listItem->setClickListener([file, this, listItem](uint64_t keys) { // Add 'command' to the capture list
                             if (keys & KEY_A) {
+                                logMessage(listItem->getValue());
+                                if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
+                                    listItem->setValue(prevValue);
+                                    prevValue = "";
+                                    resetValue = false;
+                                }
                                 // Replace "{source}" with file in commands, then execute
                                 if (!prevValue.empty()) {
                                     listItem->setValue(prevValue);
@@ -677,7 +731,7 @@ public:
             return true;
         } else if ((applied || deleted) && !keysDown) {
             deleted = false;
-            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
+            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
             if (prevValue.empty())
                 prevValue = focusedItem->getValue();
             if (applied) {
@@ -690,11 +744,13 @@ public:
             deleted = false;
             return true;
         } else if (resetValue && keysDown) {
-            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
-            if (focusedItem->getValue() == "APPLIED") {
-                focusedItem->setValue(prevValue);
-                prevValue = "";
-                resetValue = false;
+            if (this->getFocusedElement()->getClass()  == "ListItem" ){
+                tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
+                if (focusedItem->getClass() == "ListItem" && focusedItem->getValue() == "APPLIED") {
+                    focusedItem->setValue(prevValue);
+                    prevValue = "";
+                    resetValue = false;
+                }
             }
             return true;
         }
@@ -818,6 +874,12 @@ public:
                 //std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(option.second, pathReplace);
                 listItem->setClickListener([command = option.second, keyName = option.first, subPath = this->subPath, usePattern, listItem, helpPath](uint64_t keys) {
                     if (keys & KEY_A) {
+                        logMessage(listItem->getValue());
+                        if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
+                            listItem->setValue(prevValue);
+                            prevValue = "";
+                            resetValue = false;
+                        }
                         if (usePattern) {
                             tsl::changeTo<SelectionOverlay>(subPath, keyName, command);
                         } else {
@@ -993,11 +1055,13 @@ public:
             focusedItem->setValue("APPLIED", tsl::PredefinedColors::Green);
             return true;
         } else if (resetValue && keysDown) {
-            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
-            if (focusedItem->getValue() == "APPLIED"){
-                focusedItem->setValue(prevValue);
-                prevValue = "";
-                resetValue = false;
+            if (this->getFocusedElement()->getClass()  == "ListItem" ){
+                tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
+                if (focusedItem->getClass() == "ListItem" && focusedItem->getValue() == "APPLIED") {
+                    focusedItem->setValue(prevValue);
+                    prevValue = "";
+                    resetValue = false;
+                }
             }
             return true;
         }
