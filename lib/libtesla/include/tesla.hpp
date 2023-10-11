@@ -2891,7 +2891,7 @@ namespace tsl {
                 u8 currentDescIndex = std::clamp(this->m_value / (100 / (this->m_numSteps - 1)), 0, this->m_numSteps - 1);
 
                 auto [descWidth, descHeight] = renderer->drawString(this->m_stepDescriptions[currentDescIndex].c_str(), false, 0, 0, 19, tsl::style::color::ColorTransparent);
-                renderer->drawString(this->m_stepDescriptions[currentDescIndex].c_str(), false, ((this->getX() + 60) + (this->getWidth() - 95) / 2) - (descWidth / 2), this->getY() + 20, 19, a(tsl::style::color::ColorDescription));
+                renderer->drawString(this->m_stepDescriptions[currentDescIndex].c_str(), false, ((this->getX() + 50) + (this->getWidth() - 95) / 2) - (descWidth / 2), this->getY() + 20, 19, a(tsl::style::color::ColorDescription));
 
                 StepTrackBar::draw(renderer);
             }

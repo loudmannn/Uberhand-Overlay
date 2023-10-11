@@ -77,7 +77,7 @@ public:
                 for (const auto& arr : iniValues) {
                     std::string low = arr[0] < 0 ? "0" : std::to_string(arr[0]/1000) + "°C";
                     std::string high = arr[1] > 100000 ? "100°C" : std::to_string((arr[1]/1000) - 1) + "°C";
-                    std::string header = "Max fan speed at " + low + " - " + high + ": ";
+                    std::string header = "Max fan speed at " + low + "-" + high + ": ";
                     // auto catHeader = new tsl::elm::CustomHeader(header);
                     // list->addItem(catHeader);
 
@@ -94,13 +94,12 @@ public:
                         size_t listSize = list->getSize();
                         size_t sliderIndex = list->getIndexInList(slider);
                             if (sliderIndex != 0) {
-                                for (size_t i = sliderIndex-1; i == 0; i--) {
+                                for (size_t i = sliderIndex-1; i >= 0 ; i--) {
                                     if (list->getItemAtIndex(i)->getClass()  == "TrackBar") {
                                         tsl::elm::StepTrackBar* prevSlider = dynamic_cast<tsl::elm::StepTrackBar*>(list->getItemAtIndex(i));
                                         if (val < prevSlider->getProgress())
                                         {
                                             val = val+1;
-                                            dynamic_cast<tsl::elm::StepTrackBar*>(this->getFocusedElement())->setProgress(val);
                                         }
                                         break;
                                     }
