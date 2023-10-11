@@ -500,7 +500,7 @@ std::string readIniValue(std::string filePath, std::string section, std::string 
     return ""; // Key not found
 }
 
- std::vector<std::vector<int>> parseIntIniData (std::string input) {
+ std::vector<std::vector<int>> parseIntIniData (std::string input, bool skipFirstItem = true) {
     // Remove outer brackets
     input = input.substr(6, input.length() - 3);
 
@@ -511,7 +511,6 @@ std::string readIniValue(std::string filePath, std::string section, std::string 
     std::vector<std::vector<int>> result;
 
     char openBracket, comma1, comma2, closeBracket;
-    bool isFirstItem = true; // Flag to skip the first item
 
     while (ss >> openBracket) {
         if (openBracket == '[') {
@@ -519,10 +518,10 @@ std::string readIniValue(std::string filePath, std::string section, std::string 
             ss >> array[0] >> comma1 >> array[1] >> comma2 >> array[2] >> comma1 >> array[3] >> closeBracket;
             
             // Check if it's not the first item and then add to the result
-            if (!isFirstItem) {
+            if (!skipFirstItem) {
                 result.push_back(array);
             } else {
-                isFirstItem = false;
+                skipFirstItem = false;
             }
         } else if (openBracket == ',') {
             continue;
