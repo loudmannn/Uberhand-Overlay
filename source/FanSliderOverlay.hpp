@@ -6,11 +6,8 @@
 
 class FanSliderOverlay : public tsl::Gui {
 private:
-    std::string filePath, specificKey, pathPattern, pathPatternOn, pathPatternOff, jsonPath, jsonKey, itemName, parentDirName, lastParentDirName, textPath;
-    std::vector<std::string> filesList, filesListOn, filesListOff, filterList, filterOnList, filterOffList;
+    std::string filePath, specificKey;
     std::vector<std::vector<std::string>> commands;
-    bool toggleState = false;
-    json_t* jsonData;
 
 public:
     FanSliderOverlay(const std::string& file, const std::string& key = "", const std::vector<std::vector<std::string>>& cmds = {}) 
@@ -45,11 +42,9 @@ public:
                                                     "Uberhand Package", "", hasHelp, "\uE0E1  Back     \uE0E0  Apply");
         auto list = new tsl::elm::List();
 
-        bool useSlider = false;
         std::string sourceIni = "";
         std::string sectionIni = "";
         std::string keyIni = "";
-        std::pair<std::string, int> textDataPair;
 
         constexpr int lineHeight = 20;  // Adjust the line height as needed
         constexpr int fontSize = 19;    // Adjust the font size as needed
@@ -58,82 +53,74 @@ public:
             if (cmd.size() > 1) {
                 if (cmd[0] == "slider_ini") {
                     sourceIni  = preprocessPath(cmd[1]);
-                    useSlider = true;
                 }
             } 
         }
 
-        // Get the list of files matching the pattern
-        if (useSlider) {
-            if (!isFileOrDirectory(sourceIni)) {
-                list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
-                    renderer->drawString("INI file not found.\nContact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
-                    }), fontSize + lineHeight);
-                    rootFrame->setContent(list);
-                    return rootFrame;
-            } else {
-                std::string iniString = readIniValue(sourceIni, "tc", "tskin_rate_table_console_on_fwdbg");
-                std::vector<std::vector<int>> iniValues = parseIntIniData(iniString);
-                for (const auto& arr : iniValues) {
-                    std::string low = arr[0] < 0 ? "0" : std::to_string(arr[0]/1000) + "°C";
-                    std::string high = arr[1] > 100000 ? "100°C" : std::to_string((arr[1]/1000) - 1) + "°C";
-                    std::string header = "Max fan speed at " + low + "-" + high + ": ";
-                    // auto catHeader = new tsl::elm::CustomHeader(header);
-                    // list->addItem(catHeader);
+        if (!isFileOrDirectory(sourceIni)) {
+            list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
+                renderer->drawString("INI file not found.\nContact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
+                }), fontSize + lineHeight);
+                rootFrame->setContent(list);
+                return rootFrame;
+        } else {
+            std::string iniString = readIniValue(sourceIni, "tc", "tskin_rate_table_console_on_fwdbg");
+            std::vector<std::vector<int>> iniValues = parseIntIniData(iniString);
+            for (const auto& arr : iniValues) {
+                std::string low = arr[0] < 0 ? "0" : std::to_string(arr[0]/1000) + "°C";
+                std::string high = arr[1] > 100000 ? "100°C" : std::to_string((arr[1]/1000) - 1) + "°C";
+                std::string header = "Max fan speed at " + low + "-" + high + ": ";
+                double stepSize = 0.05 * 255;
+                int percentage = 0;
+                if (arr[3] > 0) {
+                    percentage = static_cast<int>(ceil(arr[3] / stepSize));
+                }
 
-                    double stepSize = 0.05 * 255;
-                    int percentage = 0;
-                    if (arr[3] > 0) {
-                        percentage = static_cast<int>(ceil(arr[3] / stepSize));
-                    }
-
-                    auto slider = new tsl::elm::NamedStepTrackBar(" ",{header + "0%", header + "5%", header + "10%", header + "15%", header + "20%", header + "25%", header + "30%", header + "35%", header + "40%", header + "45%", header + "50%", header + "55%", header + "60%", header + "65%", header + "70%", header + "75%", header + "80%", header + "85%", header + "90%", header + "95%", header+"100%"});
-
-                    slider->setProgress(percentage);
-                    slider->setValueChangedListener([this, list, slider](u8 val) {
-                        size_t listSize = list->getSize();
-                        size_t sliderIndex = list->getIndexInList(slider);
-                            if (sliderIndex != 0) {
-                                for (size_t i = sliderIndex-1; i >= 0 ; i--) {
-                                    if (list->getItemAtIndex(i)->getClass()  == "TrackBar") {
-                                        tsl::elm::StepTrackBar* prevSlider = dynamic_cast<tsl::elm::StepTrackBar*>(list->getItemAtIndex(i));
-                                        if (val < prevSlider->getProgress())
-                                        {
-                                            val = val+1;
-                                        }
-                                        break;
+                auto slider = new tsl::elm::NamedStepTrackBar(" ",{header + "0%", header + "5%", header + "10%", header + "15%", header + "20%", header + "25%", header + "30%", header + "35%", header + "40%", header + "45%", header + "50%", header + "55%", header + "60%", header + "65%", header + "70%", header + "75%", header + "80%", header + "85%", header + "90%", header + "95%", header+"100%"});
+                
+                slider->setProgress(percentage);
+                slider->setValueChangedListener([this, list, slider](u8 val) {
+                    size_t listSize = list->getSize();
+                    size_t sliderIndex = list->getIndexInList(slider);
+                        if (sliderIndex != 0) {
+                            for (size_t i = 0; i < sliderIndex; i++) {
+                                if (list->getItemAtIndex(i)->getClass()  == "TrackBar") {
+                                    tsl::elm::StepTrackBar* prevSlider = dynamic_cast<tsl::elm::StepTrackBar*>(list->getItemAtIndex(i));
+                                    if (prevSlider->getProgress() > val)
+                                    {
+                                        prevSlider->setProgress(val);
                                     }
                                 }
                             }
-                            for (size_t i = sliderIndex; i < listSize; i++) {
-                                if (list->getItemAtIndex(i)->getClass()  == "TrackBar") {
-                                    tsl::elm::StepTrackBar* curSlider = dynamic_cast<tsl::elm::StepTrackBar*>(list->getItemAtIndex(i));
-                                    if (curSlider->getProgress() < val)
-                                        curSlider->setProgress(val);
-                                }
-                            }
-                    });
-                    slider->setClickListener([this, list, iniString, sourceIni, iniValues](uint64_t keys) { // Add 'command' to the capture list
-                        if (keys & KEY_A) {
-                            std::vector<int> values;
-                            size_t listSize = list->getSize();
-                            for (size_t i = 0; i < listSize; i++) {
-                                if (list->getItemAtIndex(i)->getClass()  == "TrackBar") {
-                                    values.push_back(int(double(dynamic_cast<tsl::elm::StepTrackBar*>(list->getItemAtIndex(i))->getProgress())*12.75));
-                                }
-                            }
-                            setIniFileValue(sourceIni, "tc", "tskin_rate_table_console_on_fwdbg", formString(values, parseIntIniData(iniString, false)));
-                            setIniFileValue(sourceIni, "tc", "tskin_rate_table_handheld_on_fwdbg", formString(values, parseIntIniData(iniString, false)));
-                            applied = true;
-                            tsl::goBack();
-                            return true;
                         }
-                        return false;
-                    });
-                    list->addItem(slider);
-                }
-                rootFrame->setContent(list);
+                        for (size_t i = sliderIndex; i < listSize; i++) {
+                            if (list->getItemAtIndex(i)->getClass()  == "TrackBar") {
+                                tsl::elm::StepTrackBar* curSlider = dynamic_cast<tsl::elm::StepTrackBar*>(list->getItemAtIndex(i));
+                                if (curSlider->getProgress() < val)
+                                    curSlider->setProgress(val);
+                            }
+                        }
+                });
+                slider->setClickListener([this, list, iniString, sourceIni, iniValues](uint64_t keys) { // Add 'command' to the capture list
+                    if (keys & KEY_A) {
+                        std::vector<int> values;
+                        size_t listSize = list->getSize();
+                        for (size_t i = 0; i < listSize; i++) {
+                            if (list->getItemAtIndex(i)->getClass()  == "TrackBar") {
+                                values.push_back(int(double(dynamic_cast<tsl::elm::StepTrackBar*>(list->getItemAtIndex(i))->getProgress())*12.75));
+                            }
+                        }
+                        setIniFileValue(sourceIni, "tc", "tskin_rate_table_console_on_fwdbg", formString(values, parseIntIniData(iniString, false)));
+                        setIniFileValue(sourceIni, "tc", "tskin_rate_table_handheld_on_fwdbg", formString(values, parseIntIniData(iniString, false)));
+                        applied = true;
+                        tsl::goBack();
+                        return true;
+                    }
+                    return false;
+                });
+                list->addItem(slider);
             }
+            rootFrame->setContent(list);
         }
         return rootFrame;
     }
