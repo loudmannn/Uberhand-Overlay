@@ -11,6 +11,7 @@
 #include <json_funcs.hpp>
 #include <text_funcs.hpp>
 
+
 #define SpsmShutdownMode_Normal 0
 #define SpsmShutdownMode_Reboot 1
 
@@ -39,6 +40,7 @@
 #define touchPosition const HidTouchState
 #define touchInput &touchPos
 #define JoystickPosition HidAnalogStickState
+
 
 
 // String path variables
@@ -396,7 +398,15 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
 
         } else if (commandName == "set-ini-val" || commandName == "set-ini-value") {
             // Edit command
-            if (command.size() >= 5) {
+            if (command.size() == 3) {
+                sourcePath = preprocessPath(command[1]);
+                logMessage(command[2]);
+                IniSectionInput iniData = readIniFile(sourcePath);
+                IniSectionInput desiredData = parseDesiredData(command[2]);
+                updateIniData(iniData, desiredData);
+                writeIniFile(sourcePath, iniData);
+
+            } else if (command.size() >= 5) {
                 desiredValue = "";
                 sourcePath = preprocessPath(command[1]);
 

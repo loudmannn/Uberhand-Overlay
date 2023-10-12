@@ -10,6 +10,7 @@
 #include <cctype>   // For ::isspace
 #include <fstream>
 #include "debug_funcs.hpp"
+#include "IniSection.hpp"
 
 // Ini Functions
 
@@ -355,6 +356,38 @@ void cleanIniFormatting(const std::string& filePath) {
 }
 
 
+/*
+1. Get a data vector: data<section<keys<values>>> 
+Open file
+2. For each data section in data vector:
+  2.1. For each key
+    2.1.1. For each value - write it to file
+
+
+
+Close file
+*/
+
+// void setIniFileMulti(const std::string& fileToEdit, const IniSectionInput desiredData) {
+//     IniSectionInput iniData;
+//     if (!loadConfig(fileToEdit, iniData)) {
+//         return; // Exit if file loading failed
+//     }
+
+//     std::ofstream file(fileToEdit);
+//     if (!file.is_open()) {
+//         // std::cerr << "Unable to open file: " << fileToEdit << " for writing\n";
+//         return;
+//     }
+    
+//     for (const auto& [section, keys] : desiredData) {
+//         file << "[" << section << "]\n";
+//         for (const auto& [key, value] : keys) {
+//             file << key << "=" << value << "\n";
+//         }
+//         file << "\n";
+//     }
+// }
 
 bool setIniFile(const std::string& fileToEdit, const std::string& desiredSection, const std::string& desiredKey, const std::string& desiredValue, const std::string& desiredNewKey) {
     FILE* configFile = fopen(fileToEdit.c_str(), "r");
