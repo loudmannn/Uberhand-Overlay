@@ -2,12 +2,15 @@
 #define STBTT_STATIC
 #define TESLA_INIT_IMPL
 #include <tesla.hpp>
+#include <HelpOverlay.hpp>
 #include <utils.hpp>
 
 class FanSliderOverlay : public tsl::Gui {
 private:
-    std::string filePath, specificKey;
+    std::string filePath, specificKey ;
     std::vector<std::vector<std::string>> commands;
+    std::string helpPath = "";
+
 
 public:
     FanSliderOverlay(const std::string& file, const std::string& key = "", const std::vector<std::vector<std::string>>& cmds = {}) 
@@ -19,7 +22,6 @@ public:
 
         size_t fifthSlashPos = filePath.find('/', filePath.find('/', filePath.find('/', filePath.find('/') + 1) + 1) + 1);
         bool hasHelp = false;
-        std::string helpPath = "";
         std::string menuName = "";
         if (fifthSlashPos != std::string::npos) {
             // Extract the substring up to the fourth slash
@@ -28,6 +30,7 @@ public:
                 menuName = specificKey;
                 removeLastNumericWord(menuName);
                 helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(filePath)) + "/" + menuName.substr(1) + ".txt";
+                logMessage(helpPath);
             } else {
                 helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(filePath)) + ".txt";
             }
@@ -39,7 +42,7 @@ public:
 
         }
         auto rootFrame = new tsl::elm::OverlayFrame(specificKey.empty() ? getNameWithoutPrefix(getNameFromPath(filePath)) : specificKey.substr(1),
-                                                    "Uberhand Package", "", hasHelp, "\uE0E1  Back     \uE0E0  Apply");
+                                                    "Uberhand Package", "", hasHelp, "\uE0E1  Back     \uE0E0  Apply     ");
         auto list = new tsl::elm::List();
 
         std::string sourceIni = "";
@@ -125,38 +128,6 @@ public:
         return rootFrame;
     }
 
-    virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
-        if (keysDown & KEY_B) {
-            tsl::goBack();
-            return true;
-        } else if ((applied || deleted) && !keysDown) {
-            deleted = false;
-            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
-            if (prevValue.empty())
-                prevValue = focusedItem->getValue();
-            if (applied) {
-                resetValue = true;
-                focusedItem->setValue("APPLIED", tsl::PredefinedColors::Green);
-            }
-            else
-                focusedItem->setValue("DELETED", tsl::PredefinedColors::Red);
-            applied = false;
-            deleted = false;
-            return true;
-        } else if (resetValue && keysDown) {
-            if (this->getFocusedElement()->getClass()  == "ListItem" ){
-                tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
-                if (focusedItem->getClass() == "ListItem" && focusedItem->getValue() == "APPLIED") {
-                    focusedItem->setValue(prevValue);
-                    prevValue = "";
-                    resetValue = false;
-                }
-            }
-            return true;
-        }
-        return false;
-    }
-
     std::string formString(std::vector<int> newValues, std::vector<std::vector<int>> initialData) {
 
         std::stringstream result;
@@ -187,5 +158,15 @@ public:
 
         }
         return result.str();
+    }
+
+    virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
+        if (keysDown & KEY_B) {
+            tsl::goBack();
+            return true;
+        } else if (keysDown & KEY_Y && !helpPath.empty()) {
+            tsl::changeTo<HelpOverlay>(helpPath);
+        }
+        return false;
     }
 };
