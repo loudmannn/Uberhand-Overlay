@@ -73,7 +73,19 @@ void removeEntryFromList(const std::string& entry, std::vector<std::string>& fil
 // Delete functions
 bool deleteFileOrDirectory(const std::string& pathToDelete) {
     struct stat pathStat;
-    if (stat(pathToDelete.c_str(), &pathStat) == 0) {
+
+    if (isDirectory(pathToDelete)) {
+        FsFileSystem fsSdmc;
+        if (R_FAILED(fsOpenSdCardFileSystem(&fsSdmc))) {
+            logMessage("Error accessing file system");
+            return false;
+        }
+        if (R_FAILED(fsFsDeleteDirectoryRecursively(&fsSdmc, pathToDelete.substr(5).c_str()))){
+            logMessage("Error accessing deleting the folder");
+            return false;
+        }
+        return true;
+    } else if (stat(pathToDelete.c_str(), &pathStat) == 0) {
         if (S_ISREG(pathStat.st_mode)) {
             if (std::remove(pathToDelete.c_str()) == 0) {
                 return true;
