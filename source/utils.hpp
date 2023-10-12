@@ -397,6 +397,7 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
         } else if (commandName == "set-ini-val" || commandName == "set-ini-value") {
             // Edit command
             if (command.size() >= 5) {
+                desiredValue = "";
                 sourcePath = preprocessPath(command[1]);
 
                 desiredSection = removeQuotes(command[2]);
