@@ -3,65 +3,14 @@
 #define TESLA_INIT_IMPL
 #include <tesla.hpp>
 #include <FanSliderOverlay.hpp>
+#include <KipInfoOverlay.hpp>
+#include <JsonInfoOverlay.hpp>
 #include <utils.hpp>
 
 
 // Overlay booleans
 static bool defaultMenuLoaded = true;
 static std::string package = "";
-
-class InfoOverlay : public tsl::Gui {
-private:
-    std::vector<std::string> kipInfoCommand;
-
-
-public:
-    InfoOverlay(std::vector<std::string> kipInfoCommand) : kipInfoCommand(kipInfoCommand) {}
-    ~InfoOverlay() {}
-
-    virtual tsl::elm::Element* createUI() override {
-        // logMessage ("InfoOverlay");
-
-        std::pair<std::string, int> textDataPair;
-        constexpr int lineHeight = 20;  // Adjust the line height as needed
-        constexpr int fontSize = 19;    // Adjust the font size as needed
-
-        auto rootFrame = new tsl::elm::OverlayFrame("Backup Management", "Uberhand Package","",false,"\uE0E1  Back     \uE0E0  Apply     \uE0E2  Delete");
-        auto list = new tsl::elm::List();
-
-        textDataPair = dispCustData(kipInfoCommand[2], kipInfoCommand[1]);
-        std::string textdata = textDataPair.first;
-        int textsize = textDataPair.second;
-        if (!textdata.empty()) {
-            list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize, textdata](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
-            renderer->drawString(textdata.c_str(), false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
-            }), fontSize * textsize + lineHeight);
-            rootFrame->setContent(list);
-        }
-            return rootFrame;
-    }
-
-    virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
-        if (keysDown & KEY_B) {
-            tsl::goBack();
-            return true;
-        }
-         if (keysDown & KEY_A) {
-            copyFileOrDirectory(this->kipInfoCommand[1], "/atmosphere/kips/loader.kip");
-            applied = true;
-            tsl::goBack();
-            return true;
-         }
-         if (keysDown & KEY_X) {
-            deleteFileOrDirectory(this->kipInfoCommand[1]);
-            tsl::goBack();
-            applied = false;
-            deleted = true;
-            return true;
-         }
-        return false;
-    }
-};
 
 class ConfigOverlay : public tsl::Gui {
 private:
@@ -207,6 +156,7 @@ public:
         auto list = new tsl::elm::List();
 
         bool kipInfo = false;
+        bool ramInfo = false;
         bool useFilter = false;
         bool useSource = false;
         bool useJson = false;
@@ -215,6 +165,7 @@ public:
         bool useSplitHeader = false;
         bool markCurKip = false;
         bool markCurIni = false;
+        std::string ramPath = "";
         std::string sourceIni = "";
         std::string sectionIni = "";
         std::string keyIni = "";
@@ -255,6 +206,9 @@ public:
                 } else if (cmd[0] == "kip_info") {
                     jsonPath = preprocessPath(cmd[1]);
                     kipInfo = true;
+                } else if (cmd[0] == "ram_info") {
+                    ramPath = preprocessPath(cmd[1]);
+                    ramInfo = true;
                 } else if (cmd[0] == "json_mark_cur_kip") {
                     jsonPath = preprocessPath(cmd[1]);
                     if (cmd.size() > 2) {
@@ -477,43 +431,57 @@ public:
                         optionName = optionName.substr(0, pos); // Strip the "&&" and everything after it
                     }
                     auto listItem = new tsl::elm::ListItem(optionName);
-                    listItem->setValue(footer);
-                    listItem->setClickListener([count, this, listItem, helpPath](uint64_t keys) { // Add 'command' to the capture list
-                        if (keys & KEY_A) {
-                            // logMessage(listItem->getValue());
-                            if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
-                                listItem->setValue(prevValue);
-                                prevValue = "";
-                                resetValue = false;
+                    if (ramInfo) {
+                        listItem->setClickListener([count, this, listItem, helpPath, ramPath](uint64_t keys) { // Add 'command' to the capture list
+                            if (keys & KEY_A) {
+                                tsl::changeTo<JsonInfoOverlay>(ramPath, listItem->getText());
+                                return true;
+                            } else if (keys & KEY_Y && !helpPath.empty()) {
+                                tsl::changeTo<HelpOverlay>(helpPath);
+                            } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
+                                listItem->setValue("");
                             }
-                            // Replace "{json_source}" with file in commands, then execute
-                            if (listItem->getValue() != "DELETED") {
-                                std::string countString = std::to_string(count);
-                                std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(commands, countString, false, true, true);
-                                int result = interpretAndExecuteCommand(modifiedCommands);
-                                if (result == 0) {
-                                    listItem->setValue("DONE", tsl::PredefinedColors::Green);
-                                } else if (result == 1) {
-                                    applied = true;
-                                    tsl::goBack();
-                                } else {
-                                    listItem->setValue("FAIL", tsl::PredefinedColors::Red);
-                                }
-                            }
-                            return true;
-                        } else if (keys & KEY_Y && !helpPath.empty()) {
-                            tsl::changeTo<HelpOverlay>(helpPath);
-                        } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
-                            listItem->setValue("");
-                        }
-                        return false;
-                    });
-                    if (color.compare(0, 1, "#") == 0){
-                        listItem->setColor(tsl::PredefinedColors::Custom, color);
+                            return false;
+                        });
+                        list->addItem(listItem);
                     } else {
-                        listItem->setColor(defineColor(color));  
+                        listItem->setValue(footer);
+                        listItem->setClickListener([count, this, listItem, helpPath](uint64_t keys) { // Add 'command' to the capture list
+                            if (keys & KEY_A) {
+                                if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
+                                    listItem->setValue(prevValue);
+                                    prevValue = "";
+                                    resetValue = false;
+                                }
+                                if (listItem->getValue() != "DELETED") {
+                                    // Replace "{json_source}" with file in commands, then execute
+                                    std::string countString = std::to_string(count);
+                                    std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(commands, countString, false, true, true);
+                                    int result = interpretAndExecuteCommand(modifiedCommands);
+                                    if (result == 0) {
+                                        listItem->setValue("DONE", tsl::PredefinedColors::Green);
+                                    } else if (result == 1) {
+                                        applied = true;
+                                        tsl::goBack();
+                                    } else {
+                                        listItem->setValue("FAIL", tsl::PredefinedColors::Red);
+                                    }
+                                }
+                                return true;
+                            } else if (keys & KEY_Y && !helpPath.empty()) {
+                                tsl::changeTo<HelpOverlay>(helpPath);
+                            } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
+                                listItem->setValue("");
+                            }
+                            return false;
+                        });
+                        if (color.compare(0, 1, "#") == 0){
+                            listItem->setColor(tsl::PredefinedColors::Custom, color);
+                        } else {
+                            listItem->setColor(defineColor(color));  
+                        }
+                        list->addItem(listItem);
                     }
-                    list->addItem(listItem);
                 } else {
                     auto listItem = new tsl::elm::ListItem(itemName);
                     bool listBackups = false;
@@ -541,7 +509,6 @@ public:
                     if (!listBackups) {
                         listItem->setClickListener([file, this, listItem](uint64_t keys) { // Add 'command' to the capture list
                             if (keys & KEY_A) {
-                                // logMessage(listItem->getValue());
                                 if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
                                     listItem->setValue(prevValue);
                                     prevValue = "";
@@ -572,7 +539,7 @@ public:
                         listItem->setClickListener([file, this, listItem, kipInfoCommand](uint64_t keys) { // Add 'command' to the capture list
                             if (keys & KEY_A) {
                                 if (listItem->getValue() != "DELETED")
-                                    tsl::changeTo<InfoOverlay>(kipInfoCommand);
+                                    tsl::changeTo<KipInfoOverlay>(kipInfoCommand);
                             }
                             return false;
                         });
@@ -707,8 +674,6 @@ public:
         std::string subConfigIniPath = subPath + "/" + configFileName;
         std::vector<std::pair<std::string, std::vector<std::vector<std::string>>>> options = loadOptionsFromIni(subConfigIniPath);
         
-        // logMessage("Processing SubMenu");
-
         // Populate the sub menu with options
         for (const auto& option : options) {
             std::string optionName = option.first;
@@ -770,7 +735,6 @@ public:
                 //std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(option.second, pathReplace);
                 listItem->setClickListener([command = option.second, keyName = option.first, subPath = this->subPath, usePattern, listItem, helpPath, useSlider](uint64_t keys) {
                     if (keys & KEY_A) {
-                        // logMessage(listItem->getValue());
                         if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
                             listItem->setValue(prevValue);
                             prevValue = "";
@@ -941,7 +905,6 @@ public:
     }
 
     virtual bool handleInput(uint64_t keysDown, uint64_t keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
-        // logMessage(std::to_string(applied));
         if ((keysDown & KEY_B)) {
             tsl::goBack();
             return true;

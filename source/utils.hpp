@@ -11,7 +11,6 @@
 #include <json_funcs.hpp>
 #include <text_funcs.hpp>
 
-
 #define SpsmShutdownMode_Normal 0
 #define SpsmShutdownMode_Reboot 1
 
@@ -40,8 +39,6 @@
 #define touchPosition const HidTouchState
 #define touchInput &touchPos
 #define JoystickPosition HidAnalogStickState
-
-
 
 // String path variables
 const std::string configFileName = "config.ini";
@@ -650,7 +647,6 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
     int checkDefault = 0;
     int length = 0;
     int lineCount = 1;
-    logMessage(kipPath);
     // kipPath = std::string("/atmosphere/kips/loader.kip");
 
     if (!isFileOrDirectory(jsonPath)) {
@@ -777,6 +773,51 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
         fclose(file);
     }
     return std::make_pair(output, lineCount);
+}
+
+std::pair<std::string, int> dispRAMTmpl(std::string dataPath, std::string selectedItem) {
+
+    std::stringstream output;
+    std::string name = "";
+    std::string value  = "";
+    int nItems = 0;
+    int lineNum = 0;
+
+
+    if (!isFileOrDirectory(dataPath)) {
+        return std::make_pair(output.str(), nItems/2);
+    }
+    json_t* jsonData = readJsonFromFile(dataPath);
+    if (jsonData) {
+        size_t arraySize = json_array_size(jsonData);
+
+        for (size_t i = 0; i < arraySize; ++i) {
+            json_t* item = json_array_get(jsonData, i);
+            json_t* keyValue = json_object_get(item, "name");
+
+            if (json_string_value(keyValue) == selectedItem) {
+                output << "These RAM settings will be applied:\n\n\n-------------------------------------------------------------------\n";
+                const char *key;
+                json_t *value;
+                json_object_foreach(item, key, value) {
+                    int spaces[5] = {4,9,6,6,6}; //TODO: remove hardcode; redo text display processing
+                    if (strcmp(key, "name") != 0) {
+                        output << key << ": " << json_string_value(value) << std::string(spaces[lineNum], ' ');
+                        nItems++;
+                        if (strlen(key) > 5 && strlen(json_string_value(value))> 1) {
+                            output << "\n-------------------------------------------------------------------\n";
+                            nItems += 2;
+                        } else if (nItems % 2 == 0) { //every second item
+                            lineNum++;
+                            output << "\n-------------------------------------------------------------------\n";
+                            nItems += 2;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return std::make_pair(output.str(), nItems/2+5);
 }
 
 bool verifyIntegrity (std::string check) {
