@@ -713,10 +713,7 @@ public:
                     } else if (cmd[0] == "source_off") {
                         pathReplaceOff = cmd[1];
                         useToggle = true;
-                    } 
-                    //else if (cmd[0] == "json_data") {
-                    //    jsonPath = cmd[1];
-                    //}
+                    }
                 } 
             }
 
