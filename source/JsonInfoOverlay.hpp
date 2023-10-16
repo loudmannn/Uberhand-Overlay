@@ -40,9 +40,8 @@ public:
         return rootFrame;
     }
 
-    std::map <std::string,std::string> parseJson (std::string jsonPath, std::string selectedItem) {
+    std::map <std::string,std::string> parseJson (std::string jsonPath, std::string selectedItem, std::vector<std::string> offsets = {"32","48","16","36","52","64","56","68","60","76"}) {
         std::map <std::string,std::string> newKipdata;
-        std::vector<std::string> offsets = {"32","48","16","36","52","56","60","64","68","76"};
         std::vector<std::string> offsetStrs = findHexDataOffsets(kipPath, "43555354"); // 43555354 is a CUST
         if (!offsetStrs.empty()) {
             for(auto& offset : offsets) {
