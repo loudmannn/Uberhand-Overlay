@@ -737,6 +737,7 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                             } else {
                                 currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
                                 unsigned int intValue = reversedHexToInt(currentHex);
+                                // logMessage(name + " = " + std::to_string(intValue));
 
                                 if (j_increment) { // Add increment value from the JSON to the displayed value
                                     intValue += std::stoi(json_string_value(j_increment));
@@ -763,10 +764,6 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                         output += name;
                         output += '\n';
                         lineCount++;
-                        if (spacing) {
-                            output += '\n';
-                            lineCount++;
-                        }
                     }
                 }
             }
@@ -802,7 +799,7 @@ std::pair<std::string, int> dispRAMTmpl(std::string dataPath, std::string select
                 json_t *value;
                 json_object_foreach(item, key, value) {
                     int spaces[5] = {4,9,6,6,6}; //TODO: remove hardcode; redo text display processing
-                    if (strcmp(key, "name") != 0) {
+                    if (strcmp(key, "name") != 0 && strcmp(key, "t_offsets")) {
                         output << key << ": " << json_string_value(value) << std::string(spaces[lineNum], ' ');
                         nItems++;
                         if (strlen(key) > 5 && strlen(json_string_value(value))> 1) {
@@ -848,4 +845,16 @@ void removeLastNumericWord(std::string& str) {
             break;
         }
     }
+}
+
+std::vector<std::string> parseString(const std::string& str, char delimiter) {
+    std::vector<std::string> result;
+    std::istringstream iss(str);
+    std::string token;
+
+    while (std::getline(iss, token, delimiter)) {
+        result.push_back(token);
+    }
+
+    return result;
 }

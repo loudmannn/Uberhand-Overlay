@@ -43,11 +43,6 @@ public:
     std::map <std::string,std::string> parseJson (std::string jsonPath, std::string selectedItem, std::vector<std::string> offsets = {"32","48","16","36","52","64","56","68","60","76"}) {
         std::map <std::string,std::string> newKipdata;
         std::vector<std::string> offsetStrs = findHexDataOffsets(kipPath, "43555354"); // 43555354 is a CUST
-        if (!offsetStrs.empty()) {
-            for(auto& offset : offsets) {
-                offset = std::to_string(std::stoi(offset) + std::stoi(offsetStrs[0])); // count from "C" letter
-            }
-        }
 
         json_t* jsonData = readJsonFromFile(jsonPath);
         if (jsonData) {
@@ -56,20 +51,30 @@ public:
             for (size_t i = 0; i < arraySize; ++i) {
                 json_t* item = json_array_get(jsonData, i);
                 json_t* keyValue = json_object_get(item, "name");
-
-                if (json_object_size(item) != offsets.size() + 1) { return newKipdata; }
+                // + 2 to skip name and t_offsets
+                if (json_object_size(item) != offsets.size() + 2) { return newKipdata; }
 
                 if (json_string_value(keyValue) == selectedItem) {
                     const char *key;
                     json_t *value;
                     int j = 0;
+                    json_t* t_offsettsJ = json_object_get(item, "t_offsets");
+                    if (t_offsettsJ) {
+                        offsets = parseString(json_string_value(t_offsettsJ), ',');
+                    }
+                    
+                    if (!offsetStrs.empty()) {
+                        for(auto& offset : offsets) {
+                            offset = std::to_string(std::stoi(offset) + std::stoi(offsetStrs[0])); // count from "C" letter
+                        }
+                    }
                     json_object_foreach(item, key, value) {
-                        if (strcmp(key, "name") != 0) {
+                        if (strcmp(key, "name") != 0 && strcmp(key, "t_offsets") != 0) {
                             std::string valStr = json_string_value(value);
                             size_t spacePos = valStr.find(' ');
                             if (spacePos != 0) { valStr = valStr.substr(0, spacePos); }
-                            if (valStr.length() ==4) { valStr = std::to_string(std::stoi(valStr) * 1000); }
-                            else if (valStr.length() ==3) { valStr = std::to_string(std::stoi(valStr) * 1000); }
+                            // if not a flag or state - convert to KHz/Microvolts
+                            if (valStr.length() >= 3) { valStr = std::to_string(std::stoi(valStr) * 1000); }
                             newKipdata.emplace(offsets[j], decimalToReversedHex(valStr));
                             j++;
                         }

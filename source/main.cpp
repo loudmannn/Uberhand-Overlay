@@ -112,19 +112,20 @@ public:
         }
         return false;
     }
+    virtual std::string getClass() {return "ConfigOverlay";}
 };
 
 class SelectionOverlay : public tsl::Gui {
 private:
-    std::string filePath, specificKey, pathPattern, pathPatternOn, pathPatternOff, jsonPath, jsonKey, itemName, parentDirName, lastParentDirName, textPath;
+    std::string filePath, specificKey, pathPattern, pathPatternOn, pathPatternOff, jsonPath, jsonKey, itemName, parentDirName, lastParentDirName, textPath, footer;
     std::vector<std::string> filesList, filesListOn, filesListOff, filterList, filterOnList, filterOffList;
     std::vector<std::vector<std::string>> commands;
     bool toggleState = false;
     json_t* jsonData;
 
 public:
-    SelectionOverlay(const std::string& file, const std::string& key = "", const std::vector<std::vector<std::string>>& cmds = {}) 
-        : filePath(file), specificKey(key), commands(cmds) {}
+    SelectionOverlay(const std::string& file, const std::string& key = "", const std::vector<std::vector<std::string>>& cmds = {}, std::string footer = "") 
+        : filePath(file), specificKey(key), footer(footer), commands(cmds) {}
     ~SelectionOverlay() {}
 
     virtual tsl::elm::Element* createUI() override {
@@ -149,10 +150,9 @@ public:
             } else {
                 helpPath = "";
             }
-
         }
         auto rootFrame = new tsl::elm::OverlayFrame(specificKey.empty() ? getNameWithoutPrefix(getNameFromPath(filePath)) : specificKey.substr(1),
-                                                    "Uberhand Package", "", hasHelp);
+                                                    "Uberhand Package", "", hasHelp, footer);
         auto list = new tsl::elm::List();
 
         bool kipInfo = false;
@@ -614,7 +614,82 @@ public:
         }
         return false;
     }
+
+    virtual std::string getClass() {return "SelectionOverlay";}
 };
+
+
+
+class StepByStepOverlay : public tsl::Gui {
+private:
+    std::string jsonPath;
+    bool isInSection, inQuotes;
+
+public:
+    StepByStepOverlay(std::string jsonPath) : jsonPath(jsonPath) {}
+    ~StepByStepOverlay() {}
+
+    virtual tsl::elm::Element* createUI() override {
+        // logMessage ("StepByStepOverlay");
+
+        std::pair<std::string, int> textDataPair;
+        constexpr int lineHeight = 20;  // Adjust the line height as needed
+        constexpr int fontSize = 19;    // Adjust the font size as needed
+
+        auto rootFrame = new tsl::elm::OverlayFrame("Help", "Uberhand Package","",false,"\uE0E1  Back     ");
+        auto list = new tsl::elm::List();
+
+        if (!isFileOrDirectory(jsonPath)) {
+            list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
+            renderer->drawString("JSON file not found.\nContact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
+            }), fontSize + lineHeight);
+            rootFrame->setContent(list);
+            return rootFrame;
+        } else {
+            // create list of data in the json 
+            auto jsonData = readJsonFromFile(jsonPath);
+            if (jsonData && json_is_array(jsonData)) {
+                size_t arraySize = json_array_size(jsonData);
+                for (size_t i = 0; i < arraySize; ++i) {
+                    json_t* item = json_array_get(jsonData, i);
+                    if (item && json_is_object(item)) {
+                        json_t* typeJ   = json_object_get(item, "type");
+                        json_t* pathJ   = json_object_get(item, "path");
+                        json_t* optionJ = json_object_get(item, "option");
+                        if (typeJ && json_is_string(typeJ) && pathJ && json_is_string(pathJ) && optionJ && json_is_string(optionJ)) {
+                            std::string overlayType   = json_string_value(typeJ);
+                            std::string sourcePath    = json_string_value(pathJ);
+                            std::string optionSection = json_string_value(optionJ);
+                            // sourcePath = "sdmc:" + sourcePath;
+                            if (overlayType == "SelectionOverlay") {
+                                std::vector<std::pair<std::string, std::vector<std::vector<std::string>>>> options = loadOptionsFromIni(sourcePath);
+                                for (auto& option : options) {
+                                    std::string optionName = option.first;
+                                    if (optionName == optionSection) {
+                                        tsl::changeTo<SelectionOverlay>(sourcePath.substr(0, sourcePath.find_last_of('/')), optionSection, option.second, "\uE0E1  Skip     ");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return rootFrame;
+    }
+
+    virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
+        tsl::goBack();
+        return true;
+        if (keysDown & KEY_B) {
+            tsl::goBack();
+            return true;
+        }
+        return false;
+    }
+};
+
+
 
 class SubMenu : public tsl::Gui {
 protected:
@@ -680,12 +755,17 @@ public:
             std::string footer; 
             bool usePattern = false;
             bool useSlider  = false;
+            bool useSBS     = false;
             if (optionName[0] == '*') { 
                 usePattern = true;
                 optionName = optionName.substr(1); // Strip the "*" character on the left
                 footer = "\u25B6";
             } else if (optionName[0] == '-') {
                 useSlider = true;
+                optionName = optionName.substr(1); // Strip the "*" character on the left
+                footer = "\u25B6";
+            } else if (optionName[0] == '!') {
+                useSBS = true;
                 optionName = optionName.substr(1); // Strip the "*" character on the left
                 footer = "\u25B6";
             } else {
@@ -720,7 +800,7 @@ public:
             if (isSeparator) {
                 auto item = new tsl::elm::CategoryHeader(optionName, true);
                 list->addItem(item);
-            } else if (usePattern || !useToggle || useSlider){
+            } else if (usePattern || !useToggle || useSlider || useSBS){
                 auto listItem = static_cast<tsl::elm::ListItem*>(nullptr);
                 if ((footer == "\u25B6") || (footer.empty())) {
                     listItem = new tsl::elm::ListItem(optionName, footer);
@@ -730,7 +810,7 @@ public:
                 }
                 
                 //std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(option.second, pathReplace);
-                listItem->setClickListener([command = option.second, keyName = option.first, subPath = this->subPath, usePattern, listItem, helpPath, useSlider](uint64_t keys) {
+                listItem->setClickListener([command = option.second, keyName = option.first, subPath = this->subPath, usePattern, listItem, helpPath, useSlider, useSBS](uint64_t keys) {
                     if (keys & KEY_A) {
                         if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
                             listItem->setValue(prevValue);
@@ -741,6 +821,16 @@ public:
                             tsl::changeTo<SelectionOverlay>(subPath, keyName, command);
                         } else if (useSlider) {
                             tsl::changeTo<FanSliderOverlay>(subPath, keyName, command);
+                        } else if (useSBS) {
+                            std::string sourceData;
+                            for (const auto& cmd : command) {
+                                if (cmd.size() > 1) {
+                                    if (cmd[0] == "step-by-step") {
+                                        sourceData  = preprocessPath(cmd[1]);
+                                    }
+                                } 
+                            }
+                            tsl::changeTo<StepByStepOverlay>(sourceData);
                         } else {
                             // Interpret and execute the command
                             int result = interpretAndExecuteCommand(command);
@@ -926,6 +1016,7 @@ public:
         }
         return false;
     }
+    virtual std::string getClass() {return "SubMenu";}
 };
 
 class MainMenu;
@@ -950,6 +1041,8 @@ public:
         }
         return false;
     }
+    virtual std::string getClass() {return "Package";}
+
 };
 
 class MainMenu : public tsl::Gui {
@@ -1252,6 +1345,7 @@ public:
         }
         return false;
     }
+    virtual std::string getClass() {return "MainMenu";}
 };
 
 class Overlay : public tsl::Overlay {
