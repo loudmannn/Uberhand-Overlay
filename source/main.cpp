@@ -690,7 +690,6 @@ public:
 };
 
 
-
 class SubMenu : public tsl::Gui {
 protected:
     std::string subPath, pathReplace, pathReplaceOn, pathReplaceOff;
@@ -762,11 +761,11 @@ public:
                 footer = "\u25B6";
             } else if (optionName[0] == '-') {
                 useSlider = true;
-                optionName = optionName.substr(1); // Strip the "*" character on the left
+                optionName = optionName.substr(1); // Strip the "-" character on the left
                 footer = "\u25B6";
             } else if (optionName[0] == '!') {
                 useSBS = true;
-                optionName = optionName.substr(1); // Strip the "*" character on the left
+                optionName = optionName.substr(1); // Strip the "!" character on the left
                 footer = "\u25B6";
             } else {
                 size_t pos = optionName.find(" - ");
@@ -1026,8 +1025,9 @@ public:
     Package(const std::string& path) : SubMenu(path) {}
 
     tsl::elm::Element* createUI() override {
-        package = getNameFromPath(subPath);
+        // logMessage ("Package");
         
+        package = getNameFromPath(subPath);
         auto rootFrame = static_cast<tsl::elm::OverlayFrame*>(SubMenu::createUI());
         rootFrame->setTitle(getNameWithoutPrefix(package));
         rootFrame->setSubtitle("                             "); // FIXME: former subtitle is not fully erased if new string is shorter
@@ -1056,6 +1056,8 @@ public:
     ~MainMenu() {}
 
     virtual tsl::elm::Element* createUI() override {
+        // logMessage ("MainMenu");
+
         defaultMenuMode = "overlays";
         menuMode = "overlays";
         
