@@ -657,7 +657,7 @@ public:
         constexpr int lineHeight = 20;  // Adjust the line height as needed
         constexpr int fontSize = 19;    // Adjust the font size as needed
 
-        auto rootFrame = new tsl::elm::OverlayFrame("Help", "Uberhand Package","",false,"\uE0E1  Back     ");
+        auto rootFrame = new tsl::elm::OverlayFrame("Step By Step", "Uberhand Package","",false,"\uE0E1  Back     ");
         auto list = new tsl::elm::List();
 
         if (!isFileOrDirectory(jsonPath)) {
