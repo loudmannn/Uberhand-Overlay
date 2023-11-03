@@ -397,12 +397,13 @@ public:
         }
         
         
-        if (!useSplitHeader){
-            list->addItem(new tsl::elm::CategoryHeader(specificKey.substr(1)));
-        }
+        
         
         // Add each file as a menu item
         int count = 0;
+        std::string jsonSep = "";
+        bool isFirst = true;
+        bool hasSep = false;
         for (const std::string& file : filesList) {
             //if (file.compare(0, filterPath.length(), filterPath) != 0){
             itemName = getNameFromPath(file);
@@ -419,6 +420,7 @@ public:
                 std::string color = "Default";
                 if (useJson) { // For JSON wildcards
                     size_t pos = file.find(" - ");
+                    size_t pos2 = file.find("`");
                     size_t colorPos = file.find(" ::");
                     std::string footer = "";
                     std::string optionName = file;
@@ -430,57 +432,70 @@ public:
                         footer = optionName.substr(pos + 2); // Assign the part after "&&" as the footer
                         optionName = optionName.substr(0, pos); // Strip the "&&" and everything after it
                     }
-                    auto listItem = new tsl::elm::ListItem(optionName);
-                    if (ramInfo) {
-                        listItem->setClickListener([count, this, listItem, helpPath, ramPath](uint64_t keys) { // Add 'command' to the capture list
-                            if (keys & KEY_A) {
-                                tsl::changeTo<JsonInfoOverlay>(ramPath, listItem->getText());
-                                return true;
-                            } else if (keys & KEY_Y && !helpPath.empty()) {
-                                tsl::changeTo<HelpOverlay>(helpPath);
-                            } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
-                                listItem->setValue("");
-                            }
-                            return false;
-                        });
-                        list->addItem(listItem);
-                    } else {
-                        listItem->setValue(footer);
-                        listItem->setClickListener([count, this, listItem, helpPath](uint64_t keys) { // Add 'command' to the capture list
-                            if (keys & KEY_A) {
-                                if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
-                                    listItem->setValue(prevValue);
-                                    prevValue = "";
-                                    resetValue = false;
-                                }
-                                if (listItem->getValue() != "DELETED") {
-                                    // Replace "{json_source}" with file in commands, then execute
-                                    std::string countString = std::to_string(count);
-                                    std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(commands, countString, false, true, true);
-                                    int result = interpretAndExecuteCommand(modifiedCommands);
-                                    if (result == 0) {
-                                        listItem->setValue("DONE", tsl::PredefinedColors::Green);
-                                    } else if (result == 1) {
-                                        applied = true;
-                                        tsl::goBack();
-                                    } else {
-                                        listItem->setValue("FAIL", tsl::PredefinedColors::Red);
-                                    }
-                                }
-                                return true;
-                            } else if (keys & KEY_Y && !helpPath.empty()) {
-                                tsl::changeTo<HelpOverlay>(helpPath);
-                            } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
-                                listItem->setValue("");
-                            }
-                            return false;
-                        });
-                        if (color.compare(0, 1, "#") == 0){
-                            listItem->setColor(tsl::PredefinedColors::Custom, color);
-                        } else {
-                            listItem->setColor(defineColor(color));  
+                    if (pos2 == 0) { // separator
+                        if (isFirst) {
+                            jsonSep = optionName.substr(1);
+                            hasSep = true;
                         }
-                        list->addItem(listItem);
+                        else {
+                            auto item = new tsl::elm::CategoryHeader(optionName.substr(1), true);
+                            list->addItem(item);
+                        }
+                    }
+                    else {
+                        isFirst = false;
+                        auto listItem = new tsl::elm::ListItem(optionName);
+                        if (ramInfo) {
+                            listItem->setClickListener([count, this, listItem, helpPath, ramPath](uint64_t keys) { // Add 'command' to the capture list
+                                if (keys & KEY_A) {
+                                    tsl::changeTo<JsonInfoOverlay>(ramPath, listItem->getText());
+                                    return true;
+                                } else if (keys & KEY_Y && !helpPath.empty()) {
+                                    tsl::changeTo<HelpOverlay>(helpPath);
+                                } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
+                                    listItem->setValue("");
+                                }
+                                return false;
+                            });
+                            list->addItem(listItem);
+                        } else {
+                            listItem->setValue(footer);
+                            listItem->setClickListener([count, this, listItem, helpPath](uint64_t keys) { // Add 'command' to the capture list
+                                if (keys & KEY_A) {
+                                    if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
+                                        listItem->setValue(prevValue);
+                                        prevValue = "";
+                                        resetValue = false;
+                                    }
+                                    if (listItem->getValue() != "DELETED") {
+                                        // Replace "{json_source}" with file in commands, then execute
+                                        std::string countString = std::to_string(count);
+                                        std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(commands, countString, false, true, true);
+                                        int result = interpretAndExecuteCommand(modifiedCommands);
+                                        if (result == 0) {
+                                            listItem->setValue("DONE", tsl::PredefinedColors::Green);
+                                        } else if (result == 1) {
+                                            applied = true;
+                                            tsl::goBack();
+                                        } else {
+                                            listItem->setValue("FAIL", tsl::PredefinedColors::Red);
+                                        }
+                                    }
+                                    return true;
+                                } else if (keys & KEY_Y && !helpPath.empty()) {
+                                    tsl::changeTo<HelpOverlay>(helpPath);
+                                } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
+                                    listItem->setValue("");
+                                }
+                                return false;
+                            });
+                            if (color.compare(0, 1, "#") == 0){
+                                listItem->setColor(tsl::PredefinedColors::Custom, color);
+                            } else {
+                                listItem->setColor(defineColor(color));  
+                            }
+                            list->addItem(listItem);
+                        }
                     }
                 } else {
                     auto listItem = new tsl::elm::ListItem(itemName);
@@ -574,10 +589,16 @@ public:
                         }
                     }
                 });
-
                 list->addItem(toggleListItem);
             } 
             count++;
+        }
+        if (hasSep) {
+            if (!jsonSep.empty()) {
+                list->addItem(new tsl::elm::CategoryHeader(jsonSep), 0, 0);
+            }
+        } else if (!useSplitHeader){
+            list->addItem(new tsl::elm::CategoryHeader(specificKey.substr(1)), 0, 0);
         }
         rootFrame->setContent(list);
         return rootFrame;
