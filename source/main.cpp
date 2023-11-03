@@ -131,17 +131,17 @@ public:
     virtual tsl::elm::Element* createUI() override {
         // logMessage ("SelectionOverlay");
 
-        size_t fifthSlashPos = filePath.find('/', filePath.find('/', filePath.find('/', filePath.find('/') + 1) + 1) + 1);
         bool hasHelp = false;
-        std::string helpPath = "";
-        std::string menuName = "";
+        std::string helpPath;
+        std::string menuName;
+        size_t fifthSlashPos = filePath.find('/', filePath.find('/', filePath.find('/', filePath.find('/') + 1) + 1) + 1);
         if (fifthSlashPos != std::string::npos) {
             // Extract the substring up to the fourth slash
             helpPath = filePath.substr(0, fifthSlashPos);
             if (!specificKey.empty()) {
                 menuName = specificKey;
                 removeLastNumericWord(menuName);
-                helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(filePath)) + "/" + menuName.substr(1) + ".txt";
+                helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(filePath)) + "/" + menuName + ".txt";
             } else {
                 helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(filePath)) + ".txt";
             }
@@ -151,7 +151,7 @@ public:
                 helpPath = "";
             }
         }
-        auto rootFrame = new tsl::elm::OverlayFrame(specificKey.empty() ? getNameWithoutPrefix(getNameFromPath(filePath)) : specificKey.substr(1),
+        auto rootFrame = new tsl::elm::OverlayFrame(specificKey.empty() ? getNameWithoutPrefix(getNameFromPath(filePath)) : specificKey,
                                                     "Uberhand Package", "", hasHelp, footer);
         auto list = new tsl::elm::List();
 
@@ -438,7 +438,7 @@ public:
                             hasSep = true;
                         }
                         else {
-                            auto item = new tsl::elm::CategoryHeader(optionName.substr(1), true);
+                            auto item = new tsl::elm::CategoryHeader(optionName, true);
                             list->addItem(item);
                         }
                     }
@@ -598,7 +598,7 @@ public:
                 list->addItem(new tsl::elm::CategoryHeader(jsonSep), 0, 0);
             }
         } else if (!useSplitHeader){
-            list->addItem(new tsl::elm::CategoryHeader(specificKey.substr(1)), 0, 0);
+            list->addItem(new tsl::elm::CategoryHeader(specificKey), 0, 0);
         }
         rootFrame->setContent(list);
         return rootFrame;
@@ -776,6 +776,7 @@ public:
             bool usePattern = false;
             bool useSlider  = false;
             bool useSBS     = false;
+            std::string headerName;
             if (optionName[0] == '*') { 
                 usePattern = true;
                 optionName = optionName.substr(1); // Strip the "*" character on the left
@@ -795,7 +796,16 @@ public:
                     optionName = optionName.substr(0, pos); // Strip the "&&" and everything after it
                 }
             }
-            
+
+            size_t pos = optionName.find(" ;; "); // Find the custom display header
+            if (pos!= std::string::npos) {
+                useSBS = true;
+                headerName = optionName.substr(pos + 4); // Strip the item name
+                optionName = optionName.substr(0, pos); // Strip the displayName
+            } else {
+                headerName = optionName;
+            }
+
             // Extract the path pattern from commands
             bool useToggle = false;
             bool isSeparator = false;
@@ -830,7 +840,7 @@ public:
                 }
                 
                 //std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(option.second, pathReplace);
-                listItem->setClickListener([command = option.second, keyName = option.first, subPath = this->subPath, usePattern, listItem, helpPath, useSlider, useSBS](uint64_t keys) {
+                listItem->setClickListener([command = option.second, keyName = headerName, subPath = this->subPath, usePattern, listItem, helpPath, useSlider, useSBS](uint64_t keys) {
                     if (keys & KEY_A) {
                         if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
                             listItem->setValue(prevValue);
