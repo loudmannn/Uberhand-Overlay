@@ -704,7 +704,6 @@ public:
             std::string footer; 
             bool usePattern = false;
             bool useSlider  = false;
-            bool useSBS     = false;
             std::string headerName;
             if (optionName[0] == '*') { 
                 usePattern = true;
@@ -713,10 +712,6 @@ public:
             } else if (optionName[0] == '-') {
                 useSlider = true;
                 optionName = optionName.substr(1); // Strip the "-" character on the left
-                footer = "\u25B6";
-            } else if (optionName[0] == '!') {
-                useSBS = true;
-                optionName = optionName.substr(1); // Strip the "!" character on the left
                 footer = "\u25B6";
             } else {
                 size_t pos = optionName.find(" - ");
@@ -728,7 +723,6 @@ public:
 
             size_t pos = optionName.find(" ;; "); // Find the custom display header
             if (pos!= std::string::npos) {
-                useSBS = true;
                 headerName = optionName.substr(pos + 4); // Strip the item name
                 optionName = optionName.substr(0, pos); // Strip the displayName
             } else {
@@ -759,7 +753,7 @@ public:
             if (isSeparator) {
                 auto item = new tsl::elm::CategoryHeader(optionName, true);
                 list->addItem(item);
-            } else if (usePattern || !useToggle || useSlider || useSBS){
+            } else if (usePattern || !useToggle || useSlider) {
                 auto listItem = static_cast<tsl::elm::ListItem*>(nullptr);
                 if ((footer == "\u25B6") || (footer.empty())) {
                     listItem = new tsl::elm::ListItem(optionName, footer);
@@ -769,7 +763,7 @@ public:
                 }
                 
                 //std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(option.second, pathReplace);
-                listItem->setClickListener([command = option.second, keyName = headerName, subPath = this->subPath, usePattern, listItem, helpPath, useSlider, useSBS](uint64_t keys) {
+                listItem->setClickListener([command = option.second, keyName = headerName, subPath = this->subPath, usePattern, listItem, helpPath, useSlider](uint64_t keys) {
                     if (keys & KEY_A) {
                         if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
                             listItem->setValue(prevValue);
@@ -780,16 +774,6 @@ public:
                             tsl::changeTo<SelectionOverlay>(subPath, keyName, command);
                         } else if (useSlider) {
                             tsl::changeTo<FanSliderOverlay>(subPath, keyName, command);
-                        } else if (useSBS) {
-                            std::string sourceData;
-                            for (const auto& cmd : command) {
-                                if (cmd.size() > 1) {
-                                    if (cmd[0] == "step-by-step") {
-                                        sourceData  = preprocessPath(cmd[1]);
-                                    }
-                                } 
-                            }
-                            tsl::changeTo<StepByStepOverlay>(sourceData);
                         } else {
                             // Interpret and execute the command
                             int result = interpretAndExecuteCommand(command);
