@@ -673,7 +673,7 @@ public:
         auto rootFrame = new tsl::elm::OverlayFrame(getNameFromPath(viewsubPath), viewPackage, "" , hasHelp);
         auto list = new tsl::elm::List();
 
-        if (!enableNewFeatures) {
+        if (!enableConfigNav) {
             std::vector<std::string> subdirectories = getSubdirectories(subPath);
             std::sort(subdirectories.begin(), subdirectories.end());
             for (const auto& subDirectory : subdirectories) {
@@ -706,7 +706,7 @@ public:
             bool usePattern = false;
             bool useSlider  = false;
             std::string headerName;
-            if (enableNewFeatures && optionName[0] == '>') { // a subdirectory. add a menu item and skip to the next command
+            if (enableConfigNav && optionName[0] == '>') { // a subdirectory. add a menu item and skip to the next command
                 auto subDirectory = optionName.substr(1);
                 auto item = new tsl::elm::ListItem(getNameWithoutPrefix(subDirectory));
                 item->setValue("\u25B6", tsl::PredefinedColors::White);
@@ -988,7 +988,7 @@ public:
 
         std::string subConfigIniPath = subPath + "/" + configFileName;
         PackageHeader packageHeader = getPackageHeaderFromIni(subConfigIniPath);
-        enableNewFeatures = packageHeader.enableNewFeatures;
+        enableConfigNav = packageHeader.enableConfigNav;
 
         auto rootFrame = static_cast<tsl::elm::OverlayFrame*>(SubMenu::createUI());
         rootFrame->setTitle(getNameWithoutPrefix(package));
