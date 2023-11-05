@@ -8,6 +8,7 @@
 #include <sstream>  // For std::istringstream
 #include <algorithm> // For std::remove_if
 #include <cctype>   // For ::isspace
+#include <fstream>
 #include "debug_funcs.hpp"
 
 // Ini Functions
@@ -17,6 +18,7 @@ struct PackageHeader {
     std::string creator;
     std::string about;
     std::string github;
+    bool enableNewFeatures{ false };
 };
 PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
     PackageHeader packageHeader;
@@ -36,8 +38,12 @@ PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
     const std::string creatorPrefix = ";creator=";
     const std::string aboutPrefix = ";about=";
     const std::string repoPrefix = ";github=";
+    const std::string newFeaturesMarker = ";enableNewFeatures";
 
     while (fgets(line, sizeof(line), file)) {
+        if (line[0] != ';') { // Header ended. Skip further parsing
+            break;
+        }
         std::string strLine(line);
         size_t versionPos = strLine.find(versionPrefix);
         if (versionPos != std::string::npos) {
@@ -91,6 +97,14 @@ PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
 
             // Remove trailing whitespace or newline characters
             packageHeader.about.erase(packageHeader.about.find_last_not_of(" \t\r\n") + 1);
+        }
+
+        if (newFeaturesMarker == strLine.substr(0, newFeaturesMarker.length())) {
+            packageHeader.enableNewFeatures = true;
+        }
+
+        if (newFeaturesMarker == strLine.substr(0, newFeaturesMarker.length())) {
+            packageHeader.enableNewFeatures = true;
         }
 
         size_t repoPos = strLine.find(repoPrefix);
@@ -276,6 +290,7 @@ std::vector<std::pair<std::string, std::vector<std::vector<std::string>>>> loadO
         } else if (trimmedLine == "; Erista") {
             skipCommand = (isMariko);
             continue;
+        if (trimmedLine == "; Help") {}
         } else if (trimmedLine[0] == '[' && trimmedLine.back() == ']') {
             // New option section
             if (!currentOption.empty()) {
@@ -484,4 +499,33 @@ bool setIniFileKey(const std::string& fileToEdit, const std::string& desiredSect
     bool result = setIniFile(fileToEdit, desiredSection, desiredKey, "", desiredNewKey);
     cleanIniFormatting(fileToEdit);
     return result;
+}
+
+std::string readIniValue(std::string filePath, std::string section, std::string key) {
+    std::ifstream file(filePath);
+    std::string line, currentSection;
+    bool sectionFound = false;
+
+    while (std::getline(file, line)) {
+        // Remove leading and trailing whitespace
+        line.erase(0, line.find_first_not_of(" \r\n"));
+        line.erase(line.find_last_not_of(" \r\n") + 1);
+
+        if (!line.empty()) {
+            if (line[0] == '[' && line.back() == ']') {
+                currentSection = line.substr(1, line.length() - 2);
+                sectionFound = (currentSection == section);
+            } else if (sectionFound) {
+                size_t equalsPos = line.find('=');
+                if (equalsPos != std::string::npos) {
+                    std::string keyInFile = line.substr(0, equalsPos - 1);
+                    if (keyInFile == key) {
+                        return line.substr(equalsPos + 2);
+                    }
+                }
+            }
+        }
+    }
+
+    return ""; // Key not found
 }

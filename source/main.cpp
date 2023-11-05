@@ -8,6 +8,113 @@
 // Overlay booleans
 static bool defaultMenuLoaded = true;
 static std::string package = "";
+bool applied = false;
+bool deleted = false;
+bool resetValue = false;
+std::string prevValue = "";
+bool enableNewFeatures = false;
+
+class HelpOverlay : public tsl::Gui {
+private:
+    std::string helpPath;
+    bool isInSection, inQuotes;
+
+public:
+    HelpOverlay(std::string helpPath) : helpPath(helpPath) {}
+    ~HelpOverlay() {}
+
+    virtual tsl::elm::Element* createUI() override {
+        // logMessage ("HelpOverlay");
+
+        std::pair<std::string, int> textDataPair;
+        constexpr int lineHeight = 20;  // Adjust the line height as needed
+        constexpr int fontSize = 19;    // Adjust the font size as needed
+
+        auto rootFrame = new tsl::elm::OverlayFrame("Help", "Uberhand Package");
+        auto list = new tsl::elm::List();
+
+        if (!isFileOrDirectory(helpPath)) {
+            list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
+            renderer->drawString("Text file not found.\nContact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
+            }), fontSize + lineHeight);
+            rootFrame->setContent(list);
+            return rootFrame;
+        } else {
+            textDataPair = readTextFromFile(helpPath);
+            std::string textdata = textDataPair.first;
+            int textsize = textDataPair.second;
+            if (!textdata.empty()) {
+                list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize, textdata](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
+                renderer->drawString(textdata.c_str(), false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
+                }), fontSize * textsize + lineHeight);
+                rootFrame->setContent(list);
+                return rootFrame;
+            }
+        }
+            return rootFrame;
+    }
+
+    virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
+        if (keysDown & KEY_B) {
+            tsl::goBack();
+            return true;
+        }
+        return false;
+    }
+};
+
+class InfoOverlay : public tsl::Gui {
+private:
+    std::vector<std::string> kipInfoCommand;
+
+
+public:
+    InfoOverlay(std::vector<std::string> kipInfoCommand) : kipInfoCommand(kipInfoCommand) {}
+    ~InfoOverlay() {}
+
+    virtual tsl::elm::Element* createUI() override {
+        // logMessage ("InfoOverlay");
+
+        std::pair<std::string, int> textDataPair;
+        constexpr int lineHeight = 20;  // Adjust the line height as needed
+        constexpr int fontSize = 19;    // Adjust the font size as needed
+
+        auto rootFrame = new tsl::elm::OverlayFrame("Backup Management", "Uberhand Package","",false,"\uE0E1  Back     \uE0E0  Apply     \uE0E2  Delete");
+        auto list = new tsl::elm::List();
+
+        textDataPair = dispCustData(kipInfoCommand[2], kipInfoCommand[1]);
+        std::string textdata = textDataPair.first;
+        int textsize = textDataPair.second;
+        if (!textdata.empty()) {
+            list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize, textdata](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
+            renderer->drawString(textdata.c_str(), false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
+            }), fontSize * textsize + lineHeight);
+            rootFrame->setContent(list);
+        }
+            return rootFrame;
+    }
+
+    virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
+        if (keysDown & KEY_B) {
+            tsl::goBack();
+            return true;
+        }
+         if (keysDown & KEY_A) {
+            copyFileOrDirectory(this->kipInfoCommand[1], "/atmosphere/kips/loader.kip");
+            applied = true;
+            tsl::goBack();
+            return true;
+         }
+         if (keysDown & KEY_X) {
+            deleteFileOrDirectory(this->kipInfoCommand[1]);
+            tsl::goBack();
+            applied = false;
+            deleted = true;
+            return true;
+         }
+        return false;
+    }
+};
 
 class ConfigOverlay : public tsl::Gui {
 private:
@@ -19,6 +126,7 @@ public:
     ~ConfigOverlay() {}
 
     virtual tsl::elm::Element* createUI() override {
+        // logMessage ("ConfigOverlay");
         auto rootFrame = new tsl::elm::OverlayFrame(getNameFromPath(filePath), "Uberhand Config");
         auto list = new tsl::elm::List();
 
@@ -123,151 +231,46 @@ public:
         : filePath(file), specificKey(key), commands(cmds) {}
     ~SelectionOverlay() {}
 
-    std::pair<std::string, int> dispCustData(const std::string jsonPath) {
-
-        std::string custOffset = "";
-        std::string currentHex = "";
-        std::string extent = "";
-        std::string output = "";
-        std::string state = "";
-        std::string name = "";
-        std::string offset  = "";
-        bool allign = false;
-        int checkDefault = 0;
-        int length = 0;
-        int lineCount = 1;
-
-        if (!isFileOrDirectory(jsonPath)) {
-            return std::make_pair(output, lineCount);
-        }
-        json_t* jsonData = readJsonFromFile(jsonPath);
-        if (jsonData) {
-            size_t arraySize = json_array_size(jsonData);
-
-            std::vector<std::string> offsetStrs = findHexDataOffsets("/atmosphere/kips/loader.kip", "43555354"); // 43555354 is a CUST
-            custOffset = offsetStrs[0];
-            FILE* file = fopen("/atmosphere/kips/loader.kip", "rb");
-            if (!file) {
-                logMessage("Failed to open the loader.kip.");
-                return std::make_pair(output, lineCount);
-            }
-
-            for (size_t i = 0; i < arraySize; ++i) {
-                json_t* item = json_array_get(jsonData, i);
-                if (item && json_is_object(item)) {
-                    json_t* keyValue = json_object_get(item, "name");
-                    if (keyValue && json_is_string(keyValue)) {
-                        json_t* j_offset = json_object_get(item, "offset");
-                        json_t* j_length = json_object_get(item, "length");
-                        json_t* j_extent = json_object_get(item, "extent");
-                        json_t* j_state = json_object_get(item, "state");
-
-                        if (j_state) {
-                            state = json_string_value(j_state);
-                        } else {
-                            state = "";
-                        }
-
-                        if (state != "filler" || state.empty()) {
-                            if (!j_offset || !j_length) {
-                                return std::make_pair(output, lineCount);
-                            }
-                            name = json_string_value(keyValue);
-                            offset = json_string_value(j_offset);
-                            length = std::stoi(json_string_value(j_length));
-                            if (j_extent)
-                                extent = json_string_value(j_extent);
-                            else extent = "";
-
-                            if (offset.find(',') != std::string::npos) {
-                                std::istringstream iss(offset);
-                                std::string offsetItem;
-                                std::vector<std::string> offsetList;
-
-                                // Split the string by commas and store each offset in a vector
-                                while (std::getline(iss, offsetItem, ',')) {
-                                    offsetList.push_back(offsetItem);
-                                }
-
-                                currentHex = "";
-                                for (const std::string& offsetItem : offsetList) {
-                                    std::string tempHex = readHexDataAtOffsetF(file, custOffset, "43555354", offsetItem.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
-                                    unsigned int intValue = reversedHexToInt(tempHex);
-                                    currentHex += std::to_string(intValue) + '-';
-                                }
-                                currentHex.pop_back();
-                                output += name + ": " + currentHex;
-                            } else {
-                                json_t* j_default = json_object_get(item, "default");
-                                if (j_default) {
-                                    checkDefault = std::stoi(json_string_value(j_default));
-                                    if (checkDefault == 1) {
-                                        std::string offsetDef = std::to_string(std::stoi(offset) + length);
-                                        currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offsetDef.c_str(), length); // Read next <length> hex chars from specified offset
-                                    }
-                                }
-                                if (allign) {
-                                    // Format the string to have two columns; Calculate number of spaces needed
-                                    size_t found = output.rfind('\n');
-                                    int numreps = 33 - (output.length() - found - 1) - name.length() - length - 2;
-                                    if (!extent.empty()) {
-                                        numreps -= extent.length();
-                                    }
-                                    output.append(numreps, ' ');
-                                    allign = false;
-                                }
-                                
-                                if (checkDefault && currentHex != "000000") {
-                                    output += name + ": " + "Default";
-                                    extent = "";
-                                    checkDefault = 0;
-                                } else {
-                                    currentHex = readHexDataAtOffsetF(file, custOffset, "43555354", offset.c_str(), length); // Read the data from kip with offset starting from 'C' in 'CUST'
-                                    unsigned int intValue = reversedHexToInt(currentHex);
-                                    if (offset == "32") { // If got RAM MHz- adjust to 4IFIR value
-                                        intValue += 200000;
-                                    } else if (offset == "16") { // If got Vdd2- adjust to 4IFIR value
-                                        intValue += 100000;
-                                    }
-                                    output += name + ": " + std::to_string(intValue).substr(0, length);
-                                }
-                            }
-
-                            if (!extent.empty()) {
-                                output += " " + extent;
-                            }
-                            if (state != "no_skip"){
-                                output += '\n';
-                                lineCount++;
-                            } else {
-                                allign = true;
-                            }
-                        } else { // When state = filler
-                            std::string name = json_string_value(keyValue);
-                            output += '\n';
-                            lineCount++;
-                            output += name;
-                            output += '\n';
-                            lineCount++;
-                        }
-                    }
-                }
-            }
-            fclose(file);
-        }
-        return std::make_pair(output, lineCount);
-    }
-
     virtual tsl::elm::Element* createUI() override {
-        auto rootFrame = new tsl::elm::OverlayFrame(getNameWithoutPrefix(getNameFromPath(filePath)), "Uberhand Package");
+        // logMessage ("SelectionOverlay");
+
+        size_t fifthSlashPos = filePath.find('/', filePath.find('/', filePath.find('/', filePath.find('/') + 1) + 1) + 1);
+        bool hasHelp = false;
+        std::string helpPath = "";
+        std::string menuName = "";
+        if (fifthSlashPos != std::string::npos) {
+            // Extract the substring up to the fourth slash
+            helpPath = filePath.substr(0, fifthSlashPos);
+            if (!specificKey.empty()) {
+                menuName = specificKey;
+                removeLastNumericWord(menuName);
+                helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(filePath)) + "/" + menuName.substr(1) + ".txt";
+            } else {
+                helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(filePath)) + ".txt";
+            }
+            if (isFileOrDirectory(helpPath)) {
+               hasHelp = true; 
+            } else {
+                helpPath = "";
+            }
+
+        }
+        auto rootFrame = new tsl::elm::OverlayFrame(specificKey.empty() ? getNameWithoutPrefix(getNameFromPath(filePath)) : specificKey.substr(1),
+                                                    "Uberhand Package", "", hasHelp);
         auto list = new tsl::elm::List();
 
         bool kipInfo = false;
+        bool useFilter = false;
+        bool useSource = false;
         bool useJson = false;
         bool useText = false;
         bool useToggle = false;
         bool useSplitHeader = false;
-        bool markCurrent = false;
+        bool markCurKip = false;
+        bool markCurIni = false;
+        std::string sourceIni = "";
+        std::string sectionIni = "";
+        std::string keyIni = "";
         std::string offset = "";
         std::pair<std::string, int> textDataPair;
 
@@ -280,6 +283,7 @@ public:
                     useSplitHeader = true;
                 } else if (cmd[0] == "filter") {
                     filterList.push_back(cmd[1]);
+                    useFilter = true;
                 } else if (cmd[0] == "filter_on") {
                     filterOnList.push_back(cmd[1]);
                     useToggle = true;
@@ -288,6 +292,7 @@ public:
                     useToggle = true;
                 } else if (cmd[0] == "source") {
                     pathPattern = cmd[1];
+                    useSource = true;
                 } else if (cmd[0] == "source_on") {
                     pathPatternOn = cmd[1];
                     useToggle = true;
@@ -303,7 +308,7 @@ public:
                 } else if (cmd[0] == "kip_info") {
                     jsonPath = preprocessPath(cmd[1]);
                     kipInfo = true;
-                } else if (cmd[0] == "json_mark_current") {
+                } else if (cmd[0] == "json_mark_cur_kip") {
                     jsonPath = preprocessPath(cmd[1]);
                     if (cmd.size() > 2) {
                         jsonKey = cmd[2]; //json display key
@@ -311,7 +316,19 @@ public:
                     useJson = true;
                     if (cmd.size() > 3) {
                         offset = cmd[3];
-                        markCurrent = true;
+                        markCurKip = true;
+                    }
+                } else if (cmd[0] == "json_mark_cur_ini") {
+                    jsonPath = preprocessPath(cmd[1]);
+                    if (cmd.size() > 2) {
+                        jsonKey = cmd[2]; //json display key
+                    }
+                    useJson = true;
+                    if (cmd.size() > 5) { // Enough parts are provided to mark the current ini value
+                        sourceIni  = preprocessPath(cmd[3]);
+                        sectionIni = cmd[4];
+                        keyIni     = cmd[5];
+                        markCurIni = true;
                     }
                 } else if (cmd[0] == "text_source") {
                         textPath = preprocessPath(cmd[1]);
@@ -322,38 +339,10 @@ public:
 
         // Get the list of files matching the pattern
         if (!useToggle) {
-            if (kipInfo) {
-                if (!isFileOrDirectory(jsonPath)) {
-                    list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
-                    renderer->drawString("TMPL file not found. Contact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
-                    }), fontSize + lineHeight);
-                    rootFrame->setContent(list);
-                    return rootFrame;
-                } else {
-                    textDataPair = dispCustData(jsonPath);
-                    std::string textdata = textDataPair.first;
-                    int textsize = textDataPair.second;
-                    if (!textdata.empty()) {
-                        list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize, textdata](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
-                        renderer->drawString(textdata.c_str(), false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
-                        }), fontSize * textsize + lineHeight);
-                        auto listItem = new tsl::elm::ListItem("Back");
-                        listItem->setClickListener([](uint64_t keys) { // Add 'command' to the capture list
-                        if (keys & KEY_A) {
-                            tsl::goBack();
-                            return true;
-                        }
-                            return false;
-                        });
-                        list->addItem(listItem);
-                        rootFrame->setContent(list);
-                        return rootFrame;
-                    }
-                }
-            } else if (useText) {
+            if (useText) {
                 if (!isFileOrDirectory(textPath)) {
                     list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
-                    renderer->drawString("Text file not found. Contact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
+                    renderer->drawString("Text file not found.\nContact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
                     }), fontSize + lineHeight);
                     rootFrame->setContent(list);
                     return rootFrame;
@@ -365,15 +354,6 @@ public:
                         list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize, textdata](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
                         renderer->drawString(textdata.c_str(), false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
                         }), fontSize * textsize + lineHeight);
-                        auto listItem = new tsl::elm::ListItem("Back");
-                        listItem->setClickListener([](uint64_t keys) { // Add 'command' to the capture list
-                        if (keys & KEY_A) {
-                            tsl::goBack();
-                            return true;
-                        }
-                            return false;
-                        });
-                        list->addItem(listItem);
                         rootFrame->setContent(list);
                         return rootFrame;
                     }
@@ -381,13 +361,14 @@ public:
             } else if (useJson) {
                 if (!isFileOrDirectory(jsonPath)) {
                     list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
-                    renderer->drawString("JSON file not found. Contact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
+                    renderer->drawString("JSON file not found.\nContact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
                     }), fontSize + lineHeight);
                     rootFrame->setContent(list);
                     return rootFrame;
                 } else {
                     std::string currentHex = ""; // Is used to mark current value from the kip
                     bool detectSize = true;
+                    bool searchCurrent = markCurKip || markCurIni ? true : false;
                     // create list of data in the json 
                     jsonData = readJsonFromFile(jsonPath);
                     if (jsonData && json_is_array(jsonData)) {
@@ -400,17 +381,26 @@ public:
                                     std::string name;
                                     json_t* hexValue = json_object_get(item, "hex");
                                     json_t* colorValue = json_object_get(item, "color");
-                                    if (markCurrent && hexValue) {
+                                    if (markCurKip && hexValue && searchCurrent) {
                                         char* hexValueStr = (char*)json_string_value(hexValue);
                                         if (detectSize) {
                                             size_t hexLength = strlen(hexValueStr);
-                                            // logMessage("hexLength: " + std::to_string(hexLength));
                                             currentHex = readHexDataAtOffset("/atmosphere/kips/loader.kip", "43555354", offset, hexLength/2); // Read the data from kip with offset starting from 'C' in 'CUST'
                                             detectSize = false;
                                         }
                                         if (hexValueStr == currentHex) {
                                             name = std::string(json_string_value(keyValue)) + " - Current";
-                                            // logMessage("new name is set");
+                                            searchCurrent = false;
+                                        }
+                                        else {
+                                            name = json_string_value(keyValue);
+                                        }
+                                    } else if (markCurIni && hexValue && searchCurrent) {
+                                        char* iniValueStr = (char*)json_string_value(hexValue);
+                                        std::string iniValue = readIniValue(sourceIni, sectionIni, keyIni);
+                                        if (iniValueStr == iniValue) {
+                                            name = std::string(json_string_value(keyValue)) + " - Current";
+                                            searchCurrent = false;
                                         }
                                         else {
                                             name = json_string_value(keyValue);
@@ -427,8 +417,30 @@ public:
                         }
                     }
                 }
-            } else {
+            } else if (useFilter || useSource) {
                 filesList = getFilesListByWildcards(pathPattern);
+                std::sort(filesList.begin(), filesList.end(), [](const std::string& a, const std::string& b) {
+                    return getNameFromPath(a) < getNameFromPath(b);
+                });
+            } else if (kipInfo) {
+                if (!isFileOrDirectory(jsonPath)) {
+                    list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
+                    renderer->drawString("TMPL file not found.\nContact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
+                    }), fontSize + lineHeight);
+                    rootFrame->setContent(list);
+                    return rootFrame;
+                } else {
+                    textDataPair = dispCustData(jsonPath);
+                    std::string textdata = textDataPair.first;
+                    int textsize = textDataPair.second;
+                    if (!textdata.empty()) {
+                        list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize, textdata](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
+                        renderer->drawString(textdata.c_str(), false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
+                        }), fontSize * textsize + lineHeight);
+                        rootFrame->setContent(list);
+                        return rootFrame;
+                    }
+                }
             }
         } else {
             filesListOn = getFilesListByWildcards(pathPatternOn);
@@ -518,48 +530,94 @@ public:
                     }
                     auto listItem = new tsl::elm::ListItem(optionName);
                     listItem->setValue(footer);
-                    listItem->setClickListener([count, this, listItem](uint64_t keys) { // Add 'command' to the capture list
+                    listItem->setClickListener([count, this, listItem, helpPath](uint64_t keys) { // Add 'command' to the capture list
                         if (keys & KEY_A) {
                             // Replace "{json_source}" with file in commands, then execute
-                            std::string countString = std::to_string(count);
-                            std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(commands, countString, false, true, true);
-                            int result = interpretAndExecuteCommand(modifiedCommands);
-                            if (result == 0) {
-                                listItem->setValue("DONE", tsl::PredefinedColors::Green);
-                            } else if (result == 1) {
-                                tsl::goBack();
-                            } else {
-                                listItem->setValue("FAIL", tsl::PredefinedColors::Red);
+                            if (listItem->getValue() != "DELETED") {
+                                std::string countString = std::to_string(count);
+                                std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(commands, countString, false, true, true);
+                                int result = interpretAndExecuteCommand(modifiedCommands);
+                                if (result == 0) {
+                                    listItem->setValue("DONE", tsl::PredefinedColors::Green);
+                                } else if (result == 1) {
+                                    applied = true;
+                                    tsl::goBack();
+                                } else {
+                                    listItem->setValue("FAIL", tsl::PredefinedColors::Red);
+                                }
                             }
                             return true;
+                        } else if (keys & KEY_Y && !helpPath.empty()) {
+                            tsl::changeTo<HelpOverlay>(helpPath);
                         } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
                             listItem->setValue("");
                         }
                         return false;
                     });
-                    listItem->setColor(defineColor(color));
+                    if (color.compare(0, 1, "#") == 0){
+                        listItem->setColor(tsl::PredefinedColors::Custom, color);
+                    } else {
+                        listItem->setColor(defineColor(color));  
+                    }
                     list->addItem(listItem);
                 } else {
                     auto listItem = new tsl::elm::ListItem(itemName);
-                    listItem->setClickListener([file, this, listItem](uint64_t keys) { // Add 'command' to the capture list
-                        if (keys & KEY_A) {
-                            // Replace "{source}" with file in commands, then execute
-                            std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(commands, file);
-                            int result = interpretAndExecuteCommand(modifiedCommands);
-                            if (result == 0) {
-                                listItem->setValue("DONE", tsl::PredefinedColors::Green);
-                            } else if (result == 1) {
-                                tsl::goBack();
-                            } else {
-                                listItem->setValue("FAIL", tsl::PredefinedColors::Red);
+                    bool listBackups = false;
+                    std::vector<std::string> kipInfoCommand;
+                    for (const std::vector<std::string>& row : commands) {
+                        // Iterate over the inner vector (row)
+                        for (const std::string& cell : row) {
+                            if (cell == "kip_info") {
+                                kipInfoCommand = row;
+                                listBackups = true;
                             }
-                            return true;
-                        } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
-                            listItem->setValue("");
                         }
-                        return false;
-                    });
-                    list->addItem(listItem);
+                    }
+                    std::string concatenatedString;
+
+                    // Iterate through the vector and append each string with a space
+                    for (auto & str : kipInfoCommand) {
+                        if (str == "{source}") {
+                            str = replacePlaceholder(str, "{source}", file);
+                        }
+                    }
+                    for (const std::string& str : kipInfoCommand) {
+                        concatenatedString += str + " ";
+                    }
+                    if (!listBackups) {
+                        listItem->setClickListener([file, this, listItem](uint64_t keys) { // Add 'command' to the capture list
+                            if (keys & KEY_A) {
+                                // Replace "{source}" with file in commands, then execute
+                                if (!prevValue.empty()) {
+                                    listItem->setValue(prevValue);
+                                }
+                                std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(commands, file);
+                                int result = interpretAndExecuteCommand(modifiedCommands);
+                                if (result == 0) {
+                                    listItem->setValue("DONE", tsl::PredefinedColors::Green);
+                                } else if (result == 1) {
+                                    applied = true;
+                                    tsl::goBack();
+                                } else {
+                                    listItem->setValue("FAIL", tsl::PredefinedColors::Red);
+                                }
+                                return true;
+                            } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
+                                listItem->setValue("");
+                            }
+                            return false;
+                        });
+                        list->addItem(listItem);
+                    } else {
+                        listItem->setClickListener([file, this, listItem, kipInfoCommand](uint64_t keys) { // Add 'command' to the capture list
+                            if (keys & KEY_A) {
+                                if (listItem->getValue() != "DELETED")
+                                    tsl::changeTo<InfoOverlay>(kipInfoCommand);
+                            }
+                            return false;
+                        });
+                        list->addItem(listItem);
+                    }
                 }
             } else { // for handiling toggles
                 auto toggleListItem = new tsl::elm::ToggleListItem(itemName, false, "On", "Off");
@@ -594,7 +652,6 @@ public:
             } 
             count++;
         }
-
         rootFrame->setContent(list);
         return rootFrame;
     }
@@ -602,6 +659,28 @@ public:
     virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
         if (keysDown & KEY_B) {
             tsl::goBack();
+            return true;
+        } else if ((applied || deleted) && !keysDown) {
+            deleted = false;
+            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
+            if (prevValue.empty())
+                prevValue = focusedItem->getValue();
+            if (applied) {
+                resetValue = true;
+                focusedItem->setValue("APPLIED", tsl::PredefinedColors::Green);
+            }
+            else
+                focusedItem->setValue("DELETED", tsl::PredefinedColors::Red);
+            applied = false;
+            deleted = false;
+            return true;
+        } else if (resetValue && keysDown) {
+            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
+            if (focusedItem->getValue() == "APPLIED") {
+                focusedItem->setValue(prevValue);
+                prevValue = "";
+                resetValue = false;
+            }
             return true;
         }
         return false;
@@ -617,27 +696,46 @@ public:
     ~SubMenu() {}
 
     virtual tsl::elm::Element* createUI() override {
+        // logMessage ("SubMenu");
+
+        int numSlashes = count(subPath.begin(), subPath.end(), '/');
+        bool integrityCheck = verifyIntegrity(subPath);
+        size_t fifthSlashPos = subPath.find('/', subPath.find('/', subPath.find('/', subPath.find('/') + 1) + 1) + 1);
+        bool hasHelp = false;
+        std::string helpPath = "";
+        if (fifthSlashPos != std::string::npos) {
+            // Extract the substring up to the fourth slash
+            helpPath = subPath.substr(0, fifthSlashPos);
+            helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(subPath)) + ".txt";
+            if (isFileOrDirectory(helpPath)) {
+                hasHelp = true; 
+            } else {
+                helpPath = "";
+            }
+        }
+
         std::string viewPackage = getNameWithoutPrefix(package);
         std::string viewsubPath = getNameWithoutPrefix(getNameFromPath(subPath));
-        std::vector<std::string> subdirectories = getSubdirectories(subPath);
 
-        auto rootFrame = new tsl::elm::OverlayFrame(getNameFromPath(viewsubPath), viewPackage);
+        auto rootFrame = new tsl::elm::OverlayFrame(getNameFromPath(viewsubPath), viewPackage, "" , hasHelp);
         auto list = new tsl::elm::List();
 
-        std::sort(subdirectories.begin(), subdirectories.end());
-        
-        for(const auto& subDirectory : subdirectories){
-            if(isFileOrDirectory(subPath + subDirectory + '/' + configFileName)){
-                auto item = new tsl::elm::ListItem(getNameWithoutPrefix(subDirectory));
-                item->setValue("\u25B6", tsl::PredefinedColors::White);
-                item->setClickListener([&,subDirectory](u64 keys)->bool{
-                    if(keys & KEY_A){
-                        tsl::changeTo<SubMenu>(subPath + subDirectory + '/');
-                        return true;
-                    }
-                    return false;
-                });
-                list->addItem(item);
+        if (!enableNewFeatures) {
+            std::vector<std::string> subdirectories = getSubdirectories(subPath);
+            std::sort(subdirectories.begin(), subdirectories.end());
+            for (const auto& subDirectory : subdirectories) {
+                if (isFileOrDirectory(subPath + subDirectory + '/' + configFileName)) {
+                    auto item = new tsl::elm::ListItem(getNameWithoutPrefix(subDirectory));
+                    item->setValue("\u25B6", tsl::PredefinedColors::White);
+                    item->setClickListener([&, subDirectory](u64 keys)->bool {
+                        if (keys & KEY_A) {
+                            tsl::changeTo<SubMenu>(subPath + subDirectory + '/');
+                            return true;
+                        }
+                        return false;
+                        });
+                    list->addItem(item);
+                }
             }
         }
 
@@ -655,7 +753,21 @@ public:
             std::string optionName = option.first;
             std::string footer; 
             bool usePattern = false;
-            if (optionName[0] == '*') { 
+            if (enableNewFeatures && optionName[0] == '>') { // a subdirectory. add a menu item and skip to the next command
+                auto subDirectory = optionName.substr(1);
+                auto item = new tsl::elm::ListItem(getNameWithoutPrefix(subDirectory));
+                item->setValue("\u25B6", tsl::PredefinedColors::White);
+                item->setClickListener([&, subDirectory](u64 keys)->bool {
+                    if (keys & KEY_A) {
+                        tsl::changeTo<SubMenu>(subPath + subDirectory + '/');
+                        return true;
+                    }
+                    return false;
+                    });
+                list->addItem(item);
+                continue;
+            }
+            else if (optionName[0] == '*') {
                 usePattern = true;
                 optionName = optionName.substr(1); // Strip the "*" character on the left
                 footer = "\u25B6";
@@ -704,7 +816,7 @@ public:
                 }
                 
                 //std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(option.second, pathReplace);
-                listItem->setClickListener([command = option.second, keyName = option.first, subPath = this->subPath, usePattern, listItem](uint64_t keys) {
+                listItem->setClickListener([command = option.second, keyName = option.first, subPath = this->subPath, usePattern, listItem, helpPath](uint64_t keys) {
                     if (keys & KEY_A) {
                         if (usePattern) {
                             tsl::changeTo<SelectionOverlay>(subPath, keyName, command);
@@ -724,6 +836,8 @@ public:
                         listItem->setValue("");
                         tsl::changeTo<ConfigOverlay>(subPath, keyName);
                         return true;
+                    }else if (keys & KEY_Y && !helpPath.empty()) {
+                        tsl::changeTo<HelpOverlay>(helpPath);
                     } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
                         listItem->setValue("");
                     }
@@ -840,6 +954,27 @@ public:
             }), fontSize * numEntries + lineHeight);
         }
 
+        if (numSlashes == 5 && integrityCheck) {
+            int headerCh[] = {83, 112, 101, 99, 105, 97, 108, 32, 84, 104, 97, 110, 107, 115};
+            int length = sizeof(headerCh) / sizeof(headerCh[0]);
+            char* charArray = new char[length + 1];
+            for (int i = 0; i < length; ++i) {
+                charArray[i] = static_cast<char>(headerCh[i]);
+            }
+            charArray[length] = '\0';
+            list->addItem(new tsl::elm::CategoryHeader(charArray));
+            int checksum[] = {83, 112, 101, 99, 105, 97, 108, 32, 116, 104, 97, 110, 107, 115, 32, 116, 111, 32, 69, 102, 111, 115, 97, 109, 97, 114, 107, 44, 32, 73, 114, 110, 101, 32, 97, 110, 100, 32, 73, 51, 115, 101, 121, 46, 10, 87, 105, 116, 104, 111, 117, 116, 32, 116, 104, 101, 109, 32, 116, 104, 105, 115, 32, 119, 111, 117, 108, 100, 110, 39, 116, 32, 98, 101, 32, 112, 111, 115, 115, 98, 108, 101, 33};
+            length = sizeof(checksum) / sizeof(checksum[0]);
+            charArray = new char[length + 1];
+            for (int i = 0; i < length; ++i) {
+                charArray[i] = static_cast<char>(checksum[i]);
+            }
+            charArray[length] = '\0';
+            list->addItem(new tsl::elm::CustomDrawer([lineHeight, xOffset, fontSize, charArray](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
+                renderer->drawString(charArray, false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
+            }), fontSize * 2 + lineHeight);
+        }
+
         rootFrame->setContent(list);
         
         return rootFrame;
@@ -848,6 +983,22 @@ public:
     virtual bool handleInput(uint64_t keysDown, uint64_t keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
         if ((keysDown & KEY_B)) {
             tsl::goBack();
+            return true;
+        } else if (applied && !keysDown) {
+            applied = false;
+            resetValue = true;
+            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
+            if (prevValue.empty())
+                prevValue = focusedItem->getValue();
+            focusedItem->setValue("APPLIED", tsl::PredefinedColors::Green);
+            return true;
+        } else if (resetValue && keysDown) {
+            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
+            if (focusedItem->getValue() == "APPLIED"){
+                focusedItem->setValue(prevValue);
+                prevValue = "";
+                resetValue = false;
+            }
             return true;
         }
         return false;
@@ -882,7 +1033,9 @@ public:
                         }
                     }
                 }
-        //logMessage(subPath+' '+package);
+        std::string subConfigIniPath = subPath + "/" + configFileName;
+        PackageHeader packageHeader = getPackageHeaderFromIni(subConfigIniPath);
+        enableNewFeatures = packageHeader.enableNewFeatures;
         auto rootFrame = static_cast<tsl::elm::OverlayFrame*>(SubMenu::createUI());
         rootFrame->setTitle(getNameWithoutPrefix(package));
         rootFrame->setSubtitle("                             "); // FIXME: former subtitle is not fully erased if new string is shorter
@@ -961,7 +1114,7 @@ private:
     tsl::hlp::ini::IniData settingsData;
     std::string packageConfigIniPath = packageDirectory + configFileName;
     std::string menuMode, defaultMenuMode, inOverlayString, fullPath, optionName, repoUrl;
-    bool useDefaultMenu = false;
+    bool useDefaultMenu = false, showOverlayVersions = false, showPackageVersions = true;
     bool coolerMode = false;
 public:
     MainMenu() {}
@@ -988,6 +1141,16 @@ public:
                             settingsLoaded = true;
                         }
                     }
+                }
+                if (ultrahandSection["show_ovl_versions"] == "true") {
+                    showOverlayVersions = true;
+                } else {
+                    setIniFileValue(settingsConfigIniPath, "ultrahand", "show_ovl_versions", "false");
+                }
+                if (ultrahandSection["show_pack_versions"] == "false") {
+                    showPackageVersions = false;
+                } else {
+                    setIniFileValue(settingsConfigIniPath, "ultrahand", "show_pack_versions", "true");
                 }
                 if (ultrahandSection["coolerMode"] == "1"){
                     coolerMode = true;
@@ -1063,7 +1226,8 @@ public:
                     }
                     
                     auto* listItem = new tsl::elm::ListItem(overlayName);
-                    listItem->setValue(overlayVersion);
+                    if (showOverlayVersions)
+                        listItem->setValue(overlayVersion);
 
                     // Add a click listener to load the overlay when clicked upon
                     listItem->setClickListener([overlayFile](s64 key) {
@@ -1204,7 +1368,8 @@ public:
                     }
                     
                     auto listItem = new tsl::elm::ListItem(subdirectoryIcon + getNameWithoutPrefix(subdirectory));
-                    listItem->setValue(packageHeader.version);
+                    if (showPackageVersions)
+                        listItem->setValue(packageHeader.version);
             
                     listItem->setClickListener([this, subPath = packageDirectory + subdirectory + "/"](uint64_t keys) {
                         if (keys & KEY_A) {

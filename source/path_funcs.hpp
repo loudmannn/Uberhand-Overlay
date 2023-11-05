@@ -1,6 +1,11 @@
 #pragma once
 #include <sys/stat.h>
 #include <dirent.h>
+#include <ctime>
+#include <iostream>
+#include <fstream>
+#include <regex>
+#include <filesystem>
 
 // Function to create a directory if it doesn't exist
 void createSingleDirectory(const std::string& directoryPath) {
@@ -394,4 +399,26 @@ bool ensureDirectoryExists(const std::string& path) {
     
     logMessage(std::string("Failed to create directory: ") + path);
     return false;
+}
+
+bool generateBackup() {
+    int highestNumber = 0;
+    std::regex pattern(R"(Backup \[(\d+)\])");
+    namespace fs = std::filesystem;
+
+    for (const auto& entry : fs::directory_iterator("/atmosphere/kips/.bak/")) {
+        if (fs::is_regular_file(entry)) {
+            std::smatch match;
+            std::string filename = entry.path().filename().string();
+            if (std::regex_search(filename, match, pattern)) {
+                int number = std::stoi(match[1].str());
+                highestNumber = std::max(highestNumber, number);
+            }
+        }
+    }
+
+    std::string backupName = "/atmosphere/kips/.bak/Backup [" + std::to_string(highestNumber + 1) + "].kip";
+    // Save current kip with the unique name
+    bool result = copyFileOrDirectory("/atmosphere/kips/loader.kip", backupName.c_str());
+    return result;
 }

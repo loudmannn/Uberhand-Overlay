@@ -84,13 +84,14 @@ using namespace std::literals::chrono_literals;
 namespace tsl {
 
     // Constants
-    
+
     enum PredefinedColors {
         Red,
         Gray,
         Green,
         White,
         Orange,
+        Custom,
         DefaultText
     };
     
@@ -113,7 +114,23 @@ namespace tsl {
      * @brief RGBA4444 Color structure
      */
     struct Color {
+        static tsl::Color convertToColor(const std::string& hexString) {
+            int r, g, b;
+            std::stringstream ss;
 
+            ss << std::hex << hexString.substr(1,2);
+            ss >> r;
+            ss.clear();
+
+            ss << std::hex << hexString.substr(3,2);
+            ss >> g;
+            ss.clear();
+
+            ss << std::hex << hexString.substr(5,2);
+            ss >> b;
+            // logMessage("rgb = " + std::to_string(r) + ", " + std::to_string(g) + ", " + std::to_string(b) + ", ");
+            return tsl::Color(r, g, b, 0xF);
+        }
         union {
             struct {
                 u16 r: 4, g: 4, b: 4, a: 4;
@@ -122,7 +139,7 @@ namespace tsl {
         };
 
         constexpr inline Color(u16 raw): rgba(raw) {}
-        constexpr inline Color(u8 r, u8 g, u8 b, u8 a): r(r), g(g), b(b), a(a) {}
+        constexpr inline Color(u16 r, u16 g, u16 b, u8 a): r(r), g(g), b(b), a(a) {}
     };
 
     namespace style {
@@ -133,12 +150,12 @@ namespace tsl {
 
         namespace color {
             constexpr Color ColorFrameBackground  = { 0x0, 0x0, 0x0, 0xD };   ///< Overlay frame background color
-            constexpr Color ColorTransparent      = { 0x0, 0x0, 0x0, 0x0 };   ///< Transparent color
-            constexpr Color ColorHighlight        = { 0x0, 0xF, 0xD, 0xF };   ///< Greenish highlight color
+            constexpr Color ColorTransparent      = { 0xF, 0xF, 0xF, 0x0 };   ///< Transparent color
+            constexpr Color ColorHighlight        = { 0xF, 0xF, 0xF, 0xF };   ///< Greenish highlight color
             constexpr Color ColorError            = { 0xF, 0x0, 0x2, 0xF };   ///< Red error highlight color
-            constexpr Color ColorFrame            = { 0x7, 0x7, 0x7, 0xF };   ///< Outer boarder color
-            constexpr Color ColorHandle           = { 0x5, 0x5, 0x5, 0xF };   ///< Track bar handle color
-            constexpr Color ColorText             = { 0xF, 0xF, 0xF, 0xF };   ///< Standard text color
+            constexpr Color ColorFrame            = { 0x0, 0x0, 0x0, 0x0 };   ///< Outer boarder color
+            constexpr Color ColorHandle           = { 0x0, 0x0, 0x0, 0x0 };   ///< Track bar handle color
+            constexpr Color ColorText             = { 0xC, 0xC, 0xC, 0xF };   ///< Standard text color
             constexpr Color ColorDescription      = { 0xA, 0xA, 0xA, 0xF };   ///< Description text color
             constexpr Color ColorHeaderBar        = { 0xC, 0xC, 0xC, 0xF };   ///< Category header rectangle color
             constexpr Color ColorClickAnimation   = { 0x0, 0x2, 0x2, 0xF };   ///< Element click animation color
@@ -1595,8 +1612,9 @@ namespace tsl {
              * @param subtitle Subtitle drawn bellow the title e.g version number
              */
             std::string m_menuMode; // CUSTOM MODIFICATION
-            OverlayFrame(const std::string& title, const std::string& subtitle, const std::string& menuMode = "")
-                : Element(), m_menuMode(menuMode), m_title(title), m_subtitle(subtitle) {} // CUSTOM MODIFICATION
+            OverlayFrame(const std::string& title, const std::string& subtitle, const std::string& menuMode = "", bool help = false, 
+                                                                              std::string footer = "")
+                : Element(), m_menuMode(menuMode), m_title(title), m_subtitle(subtitle), m_footer(footer), m_help(help)  {} // CUSTOM MODIFICATION
 
             virtual ~OverlayFrame() {
                 if (this->m_contentElement != nullptr)
@@ -1621,7 +1639,7 @@ namespace tsl {
                 }
                 else {
                     if (this->m_subtitle == "Uberhand Package") {
-                        renderer->drawString(this->m_title.c_str(), false, 20, 50, 32, a(Color(0x00, 0xFF, 0x00, 0xFF)));
+                        renderer->drawString(this->m_title.c_str(), false, 20, 50, 32, a(tsl::style::color::ColorText));
                     } else if (this->m_subtitle == "Uberhand Config") {
                         renderer->drawString(this->m_title.c_str(), false, 20, 50, 32, a(Color(0xFF, 0x33, 0x3F, 0xFF)));
                     } else {
@@ -1633,14 +1651,16 @@ namespace tsl {
                 renderer->drawString(this->m_subtitle.c_str(), false, 20, y+20+offset, 15, a(tsl::style::color::ColorDescription));
 
                 renderer->drawRect(15, tsl::cfg::FramebufferHeight - 73, tsl::cfg::FramebufferWidth - 30, 1, a(tsl::style::color::ColorText));
-                std::string menuBottomLine = "\uE0E1  Back     \uE0E0  OK     ";
+                std::string footer = m_footer.empty() ?  "\uE0E1  Back     \uE0E0  OK     " : m_footer;
                 if (this->m_menuMode == "packages") {
-                    menuBottomLine += "\uE0ED  Overlays";
+                    footer += "\uE0ED  Overlays";
                 } else if (this->m_menuMode == "overlays") {
-                    menuBottomLine += "\uE0EE  Packages";
+                    footer += "\uE0EE  Packages";
+                } else if (m_help) {
+                    footer += "\uE0E3  Help";
                 }
                 
-                renderer->drawString(menuBottomLine.c_str(), false, 30, 693, 23, a(tsl::style::color::ColorText));
+                renderer->drawString(footer.c_str(), false, 30, 693, 23, a(tsl::style::color::ColorText));
 
                 if (this->m_contentElement != nullptr)
                     this->m_contentElement->frame(renderer);
@@ -1711,7 +1731,8 @@ namespace tsl {
         protected:
             Element *m_contentElement = nullptr;
 
-            std::string m_title, m_subtitle;
+            std::string m_title, m_subtitle, m_footer;
+            bool m_help;
         };
 
         /**
@@ -2323,7 +2344,7 @@ namespace tsl {
                 this->m_maxWidth = 0;
             }
 
-            inline void setColor(tsl::PredefinedColors col=tsl::PredefinedColors::Gray) {
+            inline void setColor(tsl::PredefinedColors col=tsl::PredefinedColors::Gray, std::string hexString = "") {
                 switch (col) 
                 {
                     case tsl::PredefinedColors::Green:
@@ -2340,6 +2361,9 @@ namespace tsl {
                         break;
                     case tsl::PredefinedColors::Orange:
                         this->m_color = tsl::Color(0xFF, 0xA5, 0x00, 0xF);
+                        break;
+                    case tsl::PredefinedColors::Custom:
+                        this->m_color = tsl::Color::convertToColor(hexString);
                         break;
                     case tsl::PredefinedColors::DefaultText:
                     default:
