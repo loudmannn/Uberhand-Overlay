@@ -11,6 +11,7 @@
 // Overlay booleans
 static bool defaultMenuLoaded = true;
 static std::string package = "";
+bool enableConfigNav = false;
 
 class ConfigOverlay : public tsl::Gui {
 private:
@@ -396,9 +397,6 @@ public:
             removeEntryFromList(filterPath, filesList);
         }
         
-        
-        
-        
         // Add each file as a menu item
         int count = 0;
         std::string jsonSep = "";
@@ -712,6 +710,10 @@ public:
                 item->setValue("\u25B6", tsl::PredefinedColors::White);
                 item->setClickListener([&, subDirectory](u64 keys)->bool {
                     if (keys & KEY_A) {
+                        if (!isDirectory(subPath + subDirectory + '/')) {
+                            item->setValue("FAIL", tsl::PredefinedColors::Red);
+                            return true;
+                        }
                         tsl::changeTo<SubMenu>(subPath + subDirectory + '/');
                         return true;
                     }

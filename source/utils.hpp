@@ -633,7 +633,7 @@ tsl::PredefinedColors defineColor(std::string strColor) {
     } 
 }
 
-std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string kipPath = "/atmosphere/kips/loader.kip", bool spacing = true) {
+std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string kipPath = "/atmosphere/kips/loader.kip", bool spacing = false) {
 
     std::string custOffset = "";
     std::string currentHex = "";
@@ -722,7 +722,7 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                             if (allign) {
                                 // Format the string to have two columns; Calculate number of spaces needed
                                 size_t found = output.rfind('\n');
-                                int numreps = 33 - (output.length() - found - 1) - name.length() - length - 2;
+                                int numreps = 33 - (output.length() - found - 1) - name.length() - length - 4;
                                 if (!extent.empty()) {
                                     numreps -= extent.length();
                                 }
@@ -745,7 +745,7 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                         }
 
                         if (!extent.empty()) {
-                            output += " " + extent;
+                            output += extent;
                         }
                         if (state != "no_skip"){
                             output += '\n';

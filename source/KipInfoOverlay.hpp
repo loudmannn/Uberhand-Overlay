@@ -24,7 +24,7 @@ public:
         int textsize = textDataPair.second;
         if (!textdata.empty()) {
             list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize, textdata](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
-            renderer->drawString(textdata.c_str(), false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
+            renderer->drawString(textdata.c_str(), false, x, y - 30 + lineHeight, fontSize, a(tsl::style::color::ColorText));
             }), fontSize * textsize + lineHeight);
             rootFrame->setContent(list);
         }
