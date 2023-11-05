@@ -101,10 +101,6 @@ PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
         if (newFeaturesMarker == strLine.substr(0, newFeaturesMarker.length())) {
             packageHeader.enableConfigNav = true;
         }
-
-        if (!packageHeader.version.empty() && !packageHeader.creator.empty() && !packageHeader.about.empty()) {
-            break; // Both version and creator found, exit the loop
-        }
     }
 
 
