@@ -417,6 +417,8 @@ bool generateBackup() {
     int highestNumber = 0;
     std::regex pattern(R"(Backup \[(\d+)\])");
     namespace fs = std::filesystem;
+    if (!isDirectory("/atmosphere/kips/.bak/"))
+        createDirectory("/atmosphere/kips/.bak/");
 
     for (const auto& entry : fs::directory_iterator("/atmosphere/kips/.bak/")) {
         if (fs::is_regular_file(entry)) {
