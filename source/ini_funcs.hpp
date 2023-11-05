@@ -16,15 +16,16 @@ struct PackageHeader {
     std::string version;
     std::string creator;
     std::string about;
+    std::string github;
 };
 PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
     PackageHeader packageHeader;
-    
     FILE* file = fopen(filePath.c_str(), "r");
     if (file == nullptr) {
         packageHeader.version = "";
         packageHeader.creator = "";
         packageHeader.about = "";
+        packageHeader.github = "";
         return packageHeader;
     }
 
@@ -34,6 +35,7 @@ PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
     const std::string versionPrefix = ";version=";
     const std::string creatorPrefix = ";creator=";
     const std::string aboutPrefix = ";about=";
+    const std::string repoPrefix = ";github=";
 
     while (fgets(line, sizeof(line), file)) {
         std::string strLine(line);
@@ -91,7 +93,22 @@ PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
             packageHeader.about.erase(packageHeader.about.find_last_not_of(" \t\r\n") + 1);
         }
 
-        if (!packageHeader.version.empty() && !packageHeader.creator.empty() && !packageHeader.about.empty()) {
+        size_t repoPos = strLine.find(repoPrefix);
+        if (repoPos != std::string::npos) {
+            repoPos += repoPrefix.length();
+            size_t startPos = strLine.find("'", repoPos);
+            size_t endPos = strLine.find("'", startPos + 1);
+            if (startPos != std::string::npos && endPos != std::string::npos) {
+                // Value enclosed in single quotes
+                packageHeader.github = strLine.substr(startPos + 1, endPos - startPos - 1);
+
+            } else {
+                // Value not enclosed in quotes
+                packageHeader.github = strLine.substr(repoPos, endPos - repoPos);
+            }
+        }
+
+        if (!packageHeader.version.empty() && !packageHeader.creator.empty() && !packageHeader.about.empty() && !packageHeader.github.empty()) {
             break; // Both version and creator found, exit the loop
         }
     }

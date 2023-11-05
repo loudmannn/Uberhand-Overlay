@@ -98,3 +98,13 @@ bool isFileOrDirectory(const std::string& path) {
     struct stat buffer;
     return (stat(path.c_str(), &buffer) == 0);
 }
+
+std::string getSubstringAfterLastSlash(const std::string& str) {
+    size_t lastSlashPos = str.rfind('/');
+    
+    if (lastSlashPos != std::string::npos) {
+        return str.substr(lastSlashPos + 1);
+    }
+    
+    return "";
+}
