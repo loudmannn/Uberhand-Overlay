@@ -18,7 +18,7 @@ struct PackageHeader {
     std::string version;
     std::string creator;
     std::string about;
-    bool enableNewFeatures{ false };
+    bool enableConfigNav{ false };
 };
 PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
     PackageHeader packageHeader;
@@ -37,7 +37,7 @@ PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
     const std::string versionPrefix = ";version=";
     const std::string creatorPrefix = ";creator=";
     const std::string aboutPrefix = ";about=";
-    const std::string newFeaturesMarker = ";enableNewFeatures";
+    const std::string newFeaturesMarker = ";enableConfigNav";
 
     while (fgets(line, sizeof(line), file)) {
         if (line[0] != ';') { // Header ended. Skip further parsing
@@ -99,7 +99,7 @@ PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
         }
 
         if (newFeaturesMarker == strLine.substr(0, newFeaturesMarker.length())) {
-            packageHeader.enableNewFeatures = true;
+            packageHeader.enableConfigNav = true;
         }
 
         if (!packageHeader.version.empty() && !packageHeader.creator.empty() && !packageHeader.about.empty()) {
