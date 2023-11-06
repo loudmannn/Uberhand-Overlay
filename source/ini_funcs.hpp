@@ -103,10 +103,6 @@ PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
             packageHeader.enableNewFeatures = true;
         }
 
-        if (newFeaturesMarker == strLine.substr(0, newFeaturesMarker.length())) {
-            packageHeader.enableNewFeatures = true;
-        }
-
         size_t repoPos = strLine.find(repoPrefix);
         if (repoPos != std::string::npos) {
             repoPos += repoPrefix.length();
@@ -120,10 +116,6 @@ PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
                 // Value not enclosed in quotes
                 packageHeader.github = strLine.substr(repoPos, endPos - repoPos);
             }
-        }
-
-        if (!packageHeader.version.empty() && !packageHeader.creator.empty() && !packageHeader.about.empty() && !packageHeader.github.empty()) {
-            break; // Both version and creator found, exit the loop
         }
     }
 

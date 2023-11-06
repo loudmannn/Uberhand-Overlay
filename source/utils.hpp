@@ -570,7 +570,7 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
             if (command.size() >= 3) {
                 fileUrl = preprocessUrl(command[1]);
                 destinationPath = preprocessPath(command[2]);
-                logMessage("fileUrl: "+fileUrl);
+                //logMessage("fileUrl: "+fileUrl);
                 bool result = downloadFile(fileUrl, destinationPath);
                 if (!result && catchErrors) {
                     logMessage("Error in " + commandName + " command");
@@ -839,8 +839,8 @@ std::map<std::string, std::string> packageUpdateCheck(std::string subConfigIniPa
         //logMessage("672: "+ getLinkOnLatest("/config/ultrahand/downloads/temp.json"));
         packageInfo["link"] = getLinkOnLatest("sdmc:/config/ultrahand/downloads/temp.json");
         deleteFileOrDirectory("sdmc:/config/ultrahand/downloads/temp.json");
-        logMessage("repoVer " + packageInfo["repoVer"]);
-        logMessage("localVer " + packageInfo["localVer"]);
+        //logMessage("repoVer " + packageInfo["repoVer"]);
+        //logMessage("localVer " + packageInfo["localVer"]);
         packageInfo["type"] = "zip";
     }
     return packageInfo;
@@ -850,7 +850,7 @@ std::map<std::string, std::string> ovlUpdateCheck(std::map<std::string, std::str
     std::map<std::string, std::string> ovlItemToUpdate;
     downloadFile(currentOverlay["link"], "sdmc:/config/ultrahand/downloads/temp.json");
     ovlItemToUpdate["repoVer"]= getversion("sdmc:/config/ultrahand/downloads/temp.json");
-    logMessage("repoVerovl: "+ovlItemToUpdate["repoVer"]);
+    //logMessage("repoVerovl: "+ovlItemToUpdate["repoVer"]);
     if (ovlItemToUpdate["repoVer"][0] == 'v') {
             ovlItemToUpdate["repoVer"] = ovlItemToUpdate["repoVer"].substr(1);
         }
