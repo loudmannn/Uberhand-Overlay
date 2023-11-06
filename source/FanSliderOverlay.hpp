@@ -29,7 +29,7 @@ public:
             if (!specificKey.empty()) {
                 menuName = specificKey;
                 removeLastNumericWord(menuName);
-                helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(filePath)) + "/" + menuName.substr(1) + ".txt";
+                helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(filePath)) + "/" + menuName + ".txt";
                 logMessage(helpPath);
             } else {
                 helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(filePath)) + ".txt";
@@ -41,7 +41,7 @@ public:
             }
 
         }
-        auto rootFrame = new tsl::elm::OverlayFrame(specificKey.empty() ? getNameWithoutPrefix(getNameFromPath(filePath)) : specificKey.substr(1),
+        auto rootFrame = new tsl::elm::OverlayFrame(specificKey.empty() ? getNameWithoutPrefix(getNameFromPath(filePath)) : specificKey,
                                                     "Uberhand Package", "", hasHelp, "\uE0E1  Back     \uE0E0  Apply     ");
         auto list = new tsl::elm::List();
 
