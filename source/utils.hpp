@@ -688,9 +688,12 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                         name = json_string_value(keyValue);
                         offset = json_string_value(j_offset);
                         length = std::stoi(json_string_value(j_length));
-                        if (j_extent)
+                        if (j_extent) {
                             extent = json_string_value(j_extent);
-                        else extent = "";
+                        }
+                        else {
+                            extent = "";
+                        }
 
                         if (offset.find(',') != std::string::npos) {
                             std::istringstream iss(offset);
@@ -767,6 +770,7 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
             }
         }
         fclose(file);
+        json_decref(jsonData);
     }
     return std::make_pair(output, lineCount);
 }
