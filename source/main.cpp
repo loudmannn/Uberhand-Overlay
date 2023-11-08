@@ -1013,7 +1013,6 @@ public:
         PackageHeader packageHeader = getPackageHeaderFromIni(subConfigIniPath);
         enableConfigNav = packageHeader.enableConfigNav;
 
-        enableNewFeatures = packageHeader.enableNewFeatures;
         auto rootFrame = static_cast<tsl::elm::OverlayFrame*>(SubMenu::createUI());
         rootFrame->setTitle(getNameWithoutPrefix(package));
         rootFrame->setSubtitle("                             "); // FIXME: former subtitle is not fully erased if new string is shorter
