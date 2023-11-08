@@ -17,16 +17,17 @@ struct PackageHeader {
     std::string version;
     std::string creator;
     std::string about;
+    std::string github;
     bool enableNewFeatures{ false };
 };
 PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
     PackageHeader packageHeader;
-    
     FILE* file = fopen(filePath.c_str(), "r");
     if (file == nullptr) {
         packageHeader.version = "";
         packageHeader.creator = "";
         packageHeader.about = "";
+        packageHeader.github = "";
         return packageHeader;
     }
 
@@ -36,6 +37,7 @@ PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
     const std::string versionPrefix = ";version=";
     const std::string creatorPrefix = ";creator=";
     const std::string aboutPrefix = ";about=";
+    const std::string repoPrefix = ";github=";
     const std::string newFeaturesMarker = ";enableNewFeatures";
 
     while (fgets(line, sizeof(line), file)) {
@@ -101,8 +103,19 @@ PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
             packageHeader.enableNewFeatures = true;
         }
 
-        if (!packageHeader.version.empty() && !packageHeader.creator.empty() && !packageHeader.about.empty()) {
-            break; // Both version and creator found, exit the loop
+        size_t repoPos = strLine.find(repoPrefix);
+        if (repoPos != std::string::npos) {
+            repoPos += repoPrefix.length();
+            size_t startPos = strLine.find("'", repoPos);
+            size_t endPos = strLine.find("'", startPos + 1);
+            if (startPos != std::string::npos && endPos != std::string::npos) {
+                // Value enclosed in single quotes
+                packageHeader.github = strLine.substr(startPos + 1, endPos - startPos - 1);
+
+            } else {
+                // Value not enclosed in quotes
+                packageHeader.github = strLine.substr(repoPos, endPos - repoPos);
+            }
         }
     }
 

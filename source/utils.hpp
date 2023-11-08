@@ -10,6 +10,7 @@
 #include <download_funcs.hpp>
 #include <json_funcs.hpp>
 #include <text_funcs.hpp>
+#include <jansson.h>
 
 #define SpsmShutdownMode_Normal 0
 #define SpsmShutdownMode_Reboot 1
@@ -569,7 +570,7 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
             if (command.size() >= 3) {
                 fileUrl = preprocessUrl(command[1]);
                 destinationPath = preprocessPath(command[2]);
-                logMessage("fileUrl: "+fileUrl);
+                //logMessage("fileUrl: "+fileUrl);
                 bool result = downloadFile(fileUrl, destinationPath);
                 if (!result && catchErrors) {
                     logMessage("Error in " + commandName + " command");
@@ -796,4 +797,75 @@ void removeLastNumericWord(std::string& str) {
             break;
         }
     }
+}
+
+std::string getversion(std::string path) {
+    json_t* json = readJsonFromFile(preprocessPath(path));
+    json_t* tarballUrlObj = json_object_get(json_array_get(json, 0), "tarball_url");
+    if (tarballUrlObj && json_is_string(tarballUrlObj)) {
+        const std::string tarballUrl = json_string_value(tarballUrlObj);
+        json_decref(json);
+        json_decref(tarballUrlObj);
+        return getSubstringAfterLastSlash(tarballUrl);
+    }
+    json_decref(json);
+    return "Error";
+}
+
+std::string getLinkOnLatest(std::string path, int dEntry = 1) {
+    json_t* json = readJsonFromFile(preprocessPath(path));
+    json_t* assets = json_object_get(json_array_get(json, 0), "assets");
+    json_t* link = json_object_get(json_array_get(assets, dEntry-1), "browser_download_url");
+    if (link && json_is_string(link)) {
+        const std::string linkS = json_string_value(link);
+        json_decref(json);
+        json_decref(assets);
+        json_decref(link);
+        return linkS;
+    }
+    json_decref(json);
+    return "Error";
+}
+
+
+std::map<std::string, std::string> packageUpdateCheck(std::string subConfigIniPath) {
+    std::map<std::string, std::string> packageInfo;
+    PackageHeader packageHeader = getPackageHeaderFromIni("sdmc:/switch/.packages/" + subConfigIniPath);
+    if (packageHeader.version != "" && packageHeader.github != "") {
+        packageInfo["localVer"] = packageHeader.version;
+        packageInfo["link"] = packageHeader.github;
+        packageInfo["name"] = subConfigIniPath.substr(0, subConfigIniPath.find("/config.ini"));
+        downloadFile(packageInfo["link"], "sdmc:/config/ultrahand/downloads/temp.json");
+        packageInfo["repoVer"] = getversion("sdmc:/config/ultrahand/downloads/temp.json");
+        if (packageInfo["repoVer"][0] == 'v') {
+            packageInfo["repoVer"] = packageInfo["repoVer"].substr(1);
+        }
+        //logMessage("672: "+ getLinkOnLatest("/config/ultrahand/downloads/temp.json"));
+        packageInfo["link"] = getLinkOnLatest("sdmc:/config/ultrahand/downloads/temp.json");
+        deleteFileOrDirectory("sdmc:/config/ultrahand/downloads/temp.json");
+        //logMessage("repoVer " + packageInfo["repoVer"]);
+        //logMessage("localVer " + packageInfo["localVer"]);
+        packageInfo["type"] = "zip";
+    }
+    return packageInfo;
+}
+
+std::map<std::string, std::string> ovlUpdateCheck(std::map<std::string, std::string> currentOverlay) {
+    std::map<std::string, std::string> ovlItemToUpdate;
+    downloadFile(currentOverlay["link"], "sdmc:/config/ultrahand/downloads/temp.json");
+    ovlItemToUpdate["repoVer"]= getversion("sdmc:/config/ultrahand/downloads/temp.json");
+    //logMessage("repoVerovl: "+ovlItemToUpdate["repoVer"]);
+    if (ovlItemToUpdate["repoVer"][0] == 'v') {
+            ovlItemToUpdate["repoVer"] = ovlItemToUpdate["repoVer"].substr(1);
+        }
+    if (currentOverlay["localVer"] != ovlItemToUpdate["repoVer"]) {
+        ovlItemToUpdate["link"] = getLinkOnLatest("/config/ultrahand/downloads/temp.json", std::stoi(currentOverlay["downloadEntry"]));
+        ovlItemToUpdate["name"] = currentOverlay["name"];
+        ovlItemToUpdate["type"] = "ovl";
+        deleteFileOrDirectory("sdmc:/config/ultrahand/downloads/temp.json");
+        return ovlItemToUpdate;
+    }
+    deleteFileOrDirectory("sdmc:/config/ultrahand/downloads/temp.json");
+    ovlItemToUpdate.clear();
+    return ovlItemToUpdate;
 }

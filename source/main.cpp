@@ -1015,11 +1015,29 @@ public:
 
     tsl::elm::Element* createUI() override {
         package = getNameFromPath(subPath);
+        if (isFileOrDirectory(subPath + "/init.ini")) {
+                    std::vector<std::pair<std::string, std::vector<std::vector<std::string>>>> options = loadOptionsFromIni(subPath + "/init.ini");
+                    for (const auto& option : options) {
+                        if (interpretAndExecuteCommand(getModifyCommands(option.second, subPath + option.first)) == -1) {
+                            logMessage("Init failed!");
 
+                            auto rootFrame = new tsl::elm::OverlayFrame(getNameWithoutPrefix(package), "Uberhand Package");
+                            auto list = new tsl::elm::List();
+
+                            list->addItem(new tsl::elm::CustomDrawer([](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
+                                renderer->drawString("Initialization failed", false, x, y + 20, 19, a(tsl::style::color::ColorText));
+                            }), 19 + 20);
+
+                            rootFrame->setContent(list);
+                            return rootFrame;
+                        } else {
+                            deleteFileOrDirectory(subPath + "/init.ini");
+                        }
+                    }
+                }
         std::string subConfigIniPath = subPath + "/" + configFileName;
         PackageHeader packageHeader = getPackageHeaderFromIni(subConfigIniPath);
         enableNewFeatures = packageHeader.enableNewFeatures;
-
         auto rootFrame = static_cast<tsl::elm::OverlayFrame*>(SubMenu::createUI());
         rootFrame->setTitle(getNameWithoutPrefix(package));
         rootFrame->setSubtitle("                             "); // FIXME: former subtitle is not fully erased if new string is shorter
@@ -1035,12 +1053,71 @@ public:
     }
 };
 
+class Updater : public tsl::Gui {
+protected:
+    std::vector<std::map<std::string, std::string>> uitems;
+
+public:
+    Updater(const std::vector<std::map<std::string, std::string>>& items) : uitems(items) {}
+
+    tsl::elm::Element* createUI() override {
+        auto rootFrame = new tsl::elm::OverlayFrame("Updates available", "Updater");
+        auto list = new tsl::elm::List();
+
+        for (const auto& item : uitems) {
+            auto* listItem = new tsl::elm::ListItem(item.at("name"), item.at("repoVer"));
+            listItem->setClickListener([item, listItem](s64 key) {
+                if (key & KEY_A) {
+                    std::string type = item.at("type");
+                    std::string link = item.at("link");
+
+                    if (type == "ovl") {
+                        if (downloadFile(link, "sdmc:/switch/.overlays/")) {
+                            listItem->setValue("DONE", tsl::PredefinedColors::Green);
+                            return true;
+                        }
+                    } else if (type == "zip") {
+                        std::string tempZipPath = "sdmc:/switch/.packages/temp.zip";
+                        std::string destFolderPath = "sdmc:/switch/.packages/";
+
+                        if (downloadFile(link, tempZipPath) && unzipFile(tempZipPath, destFolderPath)) {
+                            deleteFileOrDirectory(tempZipPath);
+                            listItem->setValue("DONE", tsl::PredefinedColors::Green);
+                            return true;
+                        }
+                    }
+
+                    listItem->setValue("FAIL", tsl::PredefinedColors::Red);
+                }
+
+                return false;
+            });
+
+            list->addItem(listItem);
+        }
+
+        rootFrame->setContent(list);
+        return rootFrame;
+    }
+
+    bool handleInput(uint64_t keysDown, uint64_t keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
+        if (keysDown & KEY_B) {
+            tsl::changeTo<MainMenu>();
+            return true;
+        }
+
+        return false;
+    }
+};
+
+
 class MainMenu : public tsl::Gui {
 private:
     tsl::hlp::ini::IniData settingsData;
     std::string packageConfigIniPath = packageDirectory + configFileName;
-    std::string menuMode, defaultMenuMode, inOverlayString, fullPath, optionName;
+    std::string menuMode, defaultMenuMode, inOverlayString, fullPath, optionName, repoUrl;
     bool useDefaultMenu = false, showOverlayVersions = false, showPackageVersions = true;
+    bool coolerMode = false;
 public:
     MainMenu() {}
     ~MainMenu() {}
@@ -1077,8 +1154,17 @@ public:
                 } else {
                     setIniFileValue(settingsConfigIniPath, "ultrahand", "show_pack_versions", "true");
                 }
+                if (ultrahandSection["coolerMode"] == "1"){
+                    coolerMode = true;
+                }
+                if (!ultrahandSection["ovlRepo"].empty()){
+                    repoUrl = ultrahandSection["ovlRepo"];
+                } else {
+                    repoUrl = "https://raw.githubusercontent.com/i3sey/uUpdater-ovl-repo/main/main.ini";
+                }
             }
         }
+        
         if (!settingsLoaded) { // write data if settings are not loaded
             setIniFileValue(settingsConfigIniPath, "ultrahand", "default_menu", defaultMenuMode);
             setIniFileValue(settingsConfigIniPath, "ultrahand", "last_menu", menuMode);
@@ -1179,6 +1265,63 @@ public:
                     count++;
                 }
             }
+
+            //ovl updater section
+            auto updaterItem = new tsl::elm::ListItem("Check for Updates");
+            updaterItem->setClickListener([this, updaterItem](uint64_t keys) {
+                        if (keys & KEY_A) {
+                            bool NeedUpdate = false;
+                            std::vector<std::map<std::string, std::string>> items;
+                            if (!coolerMode) {
+                                std::vector<std::string> overlays = getFilesListFromDirectory("sdmc:/switch/.overlays/");
+                                std::map<std::string, std::string> package;
+                                downloadFile(repoUrl, "sdmc:/config/ultrahand/Updater.ini");
+                                std::vector<std::pair<std::string, std::vector<std::vector<std::string>>>> options = loadOptionsFromIni("sdmc:/config/ultrahand/Updater.ini");
+                                for (const auto& option : options) {
+                                    for (const std::string& overlay : overlays) {
+                                        std::string uoverlay = dropExtension(getNameFromPath(overlay));
+                                        if (uoverlay == option.first) {
+                                            auto [result, overlayName, overlayVersion] = getOverlayInfo(overlay);
+                                            if (result != ResultSuccess)
+                                                continue;
+                                            package["name"] = overlayName;
+                                            package["link"] = option.second.at(1).front().substr(5);
+                                            package["localVer"] = overlayVersion;
+                                            package["downloadEntry"] = option.second.front().front().substr(14);
+                                            std::map<std::string, std::string> resultUpdate = ovlUpdateCheck(package);
+                                            if (!resultUpdate.empty()) {
+                                                NeedUpdate = true;
+                                                items.insert(items.end(), resultUpdate);
+                                            }
+                                        }
+                                    }
+                                    
+                                }
+                            } else {
+                                auto [result, overlayName, overlayVersion] = getOverlayInfo("sdmc:/switch/.overlays/ovlmenu.ovl");
+                                if (result != ResultSuccess)
+                                    return false;
+                                std::map<std::string, std::string> ovlmenu;
+                                ovlmenu["name"] = overlayName;
+                                ovlmenu["localVer"] = overlayVersion;
+                                ovlmenu["link"] = "https://api.github.com/repos/efosamark/Uberhand-Overlay/releases";
+                                ovlmenu["downloadEntry"] = "1";
+                                std::map<std::string, std::string> resultUpdate = ovlUpdateCheck(ovlmenu);
+                                if (!resultUpdate.empty()) {
+                                    NeedUpdate = true;
+                                    items.insert(items.end(), resultUpdate);
+                                }
+                            }
+                            
+                            if (NeedUpdate){
+                                tsl::changeTo<Updater>(items);
+                            }
+                            updaterItem->setText("No updates");
+                            return true;
+                        }
+                        return false;
+                    });
+            list->addItem(updaterItem);
         }
         
         if (menuMode == "packages" ) {
@@ -1253,7 +1396,29 @@ public:
 
             }
 
-        
+            //package updater section
+            auto updaterItem = new tsl::elm::ListItem("Check for Updates");
+            updaterItem->setClickListener([this, subdirectories, updaterItem](uint64_t keys) {
+                        if (keys & KEY_A) {
+                            //setIniFile(packageDirectory + "Updater/config.ini", "App", "back", "", "");
+                            bool NeedUpdate = false;
+                            std::vector<std::map<std::string, std::string>> items;
+                            for (const auto& taintedSubdirectory : subdirectories) {
+                                std::map<std::string, std::string> packageInfo = packageUpdateCheck(taintedSubdirectory + "/" + "config.ini");
+                                if (packageInfo["localVer"] != packageInfo["repoVer"]){
+                                    NeedUpdate = true;
+                                    items.insert(items.end(), packageInfo);
+                                    }
+                            }
+                            if (NeedUpdate){
+                                tsl::changeTo<Updater>(items);
+                            }
+                            updaterItem->setText("No updates");
+                            return true;
+                        }
+                        return false;
+                    });
+            list->addItem(updaterItem);
             count = 0;
             //std::string optionName;
             // Populate the menu with options
