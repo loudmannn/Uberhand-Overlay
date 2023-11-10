@@ -864,6 +864,12 @@ std::vector<std::string> parseString(const std::string& str, char delimiter) {
 
 std::string getversion(std::string path) {
     json_t* json = readJsonFromFile(preprocessPath(path));
+    json_t* error = json_object_get(json, "message");
+    if (json_string_length(error) != 0) {
+        json_decref(json);
+        logMessage("API limit reached");
+        return "ApiLimit";
+    }
     json_t* tarballUrlObj = json_object_get(json_array_get(json, 0), "tarball_url");
     if (tarballUrlObj && json_is_string(tarballUrlObj)) {
         const std::string tarballUrl = json_string_value(tarballUrlObj);
@@ -900,6 +906,11 @@ std::map<std::string, std::string> packageUpdateCheck(std::string subConfigIniPa
         packageInfo["name"] = subConfigIniPath.substr(0, subConfigIniPath.find("/config.ini"));
         downloadFile(packageInfo["link"], "sdmc:/config/ultrahand/downloads/temp.json");
         packageInfo["repoVer"] = getversion("sdmc:/config/ultrahand/downloads/temp.json");
+        if (packageInfo["repoVer"] == "ApiLimit") {
+            deleteFileOrDirectory("sdmc:/config/ultrahand/downloads/temp.json");
+            packageInfo.clear();
+            return packageInfo;
+        }
         if (packageInfo["repoVer"][0] == 'v') {
             packageInfo["repoVer"] = packageInfo["repoVer"].substr(1);
         }
@@ -917,6 +928,11 @@ std::map<std::string, std::string> ovlUpdateCheck(std::map<std::string, std::str
     std::map<std::string, std::string> ovlItemToUpdate;
     downloadFile(currentOverlay["link"], "sdmc:/config/ultrahand/downloads/temp.json");
     ovlItemToUpdate["repoVer"]= getversion("sdmc:/config/ultrahand/downloads/temp.json");
+    if (ovlItemToUpdate["repoVer"] == "ApiLimit") {
+        deleteFileOrDirectory("sdmc:/config/ultrahand/downloads/temp.json");
+        ovlItemToUpdate.clear();
+        return ovlItemToUpdate;
+    }
     //logMessage("repoVerovl: "+ovlItemToUpdate["repoVer"]);
     if (ovlItemToUpdate["repoVer"][0] == 'v') {
             ovlItemToUpdate["repoVer"] = ovlItemToUpdate["repoVer"].substr(1);
