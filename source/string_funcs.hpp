@@ -82,6 +82,14 @@ std::string dropExtension(const std::string& filename) {
     return filename;
 }
 
+std::string getExtension(const std::string& filename) {
+    size_t lastDotPos = filename.find_last_of(".");
+    if (lastDotPos != std::string::npos) {
+        return filename.substr(lastDotPos + 1);
+    }
+    return filename;
+}
+
 bool startsWith(const std::string& str, const std::string& prefix) {
     return str.compare(0, prefix.length(), prefix) == 0;
 }
