@@ -1053,9 +1053,18 @@ public:
                             listItem->setValue("DONE", tsl::PredefinedColors::Green);
                             return true;
                         }
-                    } else if (type == "zip") {
+                    } else if (type == "pkgzip") {
                         std::string tempZipPath = "sdmc:/switch/.packages/temp.zip";
                         std::string destFolderPath = "sdmc:/switch/.packages/";
+
+                        if (downloadFile(link, tempZipPath) && unzipFile(tempZipPath, destFolderPath)) {
+                            deleteFileOrDirectory(tempZipPath);
+                            listItem->setValue("DONE", tsl::PredefinedColors::Green);
+                            return true;
+                        }
+                    } else if (type == "ovlzip") {
+                        std::string tempZipPath = "sdmc:/switch/.packages/temp.zip";
+                        std::string destFolderPath = "sdmc:/";
 
                         if (downloadFile(link, tempZipPath) && unzipFile(tempZipPath, destFolderPath)) {
                             deleteFileOrDirectory(tempZipPath);
