@@ -41,7 +41,6 @@
 #define touchInput &touchPos
 #define JoystickPosition HidAnalogStickState
 
-
 // String path variables
 const std::string configFileName = "config.ini";
 const std::string settingsPath = "sdmc:/config/ultrahand/";
@@ -50,7 +49,10 @@ const std::string packageDirectory = "sdmc:/switch/.packages/";
 const std::string overlayDirectory = "sdmc:/switch/.overlays/";
 const std::string teslaSettingsConfigIniPath = "sdmc:/config/tesla/"+configFileName;
 
-
+bool applied = false;
+bool deleted = false;
+bool resetValue = false;
+std::string prevValue = "";
 
 void copyTeslaKeyComboToUltraHand() {
     std::string keyCombo;
@@ -394,7 +396,16 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
 
         } else if (commandName == "set-ini-val" || commandName == "set-ini-value") {
             // Edit command
-            if (command.size() >= 5) {
+            if (command.size() == 3) {
+                sourcePath = preprocessPath(command[1]);
+                logMessage(command[2]);
+                IniSectionInput iniData = readIniFile(sourcePath);
+                IniSectionInput desiredData = parseDesiredData(command[2]);
+                updateIniData(iniData, desiredData);
+                writeIniFile(sourcePath, iniData);
+
+            } else if (command.size() >= 5) {
+                desiredValue = "";
                 sourcePath = preprocessPath(command[1]);
 
                 desiredSection = removeQuotes(command[2]);
@@ -623,7 +634,7 @@ tsl::PredefinedColors defineColor(std::string strColor) {
     } 
 }
 
-std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string kipPath = "/atmosphere/kips/loader.kip", bool spacing = true) {
+std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string kipPath = "/atmosphere/kips/loader.kip", bool spacing = false) {
 
     std::string custOffset = "";
     std::string currentHex = "";
@@ -637,7 +648,6 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
     int checkDefault = 0;
     int length = 0;
     int lineCount = 1;
-    logMessage(kipPath);
     // kipPath = std::string("/atmosphere/kips/loader.kip");
 
     if (!isFileOrDirectory(jsonPath)) {
@@ -716,7 +726,7 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                             if (allign) {
                                 // Format the string to have two columns; Calculate number of spaces needed
                                 size_t found = output.rfind('\n');
-                                int numreps = 33 - (output.length() - found - 1) - name.length() - length - 2;
+                                int numreps = 33 - (output.length() - found - 1) - name.length() - length - 4;
                                 if (!extent.empty()) {
                                     numreps -= extent.length();
                                 }
@@ -739,7 +749,7 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                         }
 
                         if (!extent.empty()) {
-                            output += " " + extent;
+                            output += extent;
                         }
                         if (state != "no_skip"){
                             output += '\n';
@@ -756,10 +766,6 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                         output += name;
                         output += '\n';
                         lineCount++;
-                        if (spacing) {
-                            output += '\n';
-                            lineCount++;
-                        }
                     }
                 }
             }
@@ -768,6 +774,51 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
         json_decref(jsonData);
     }
     return std::make_pair(output, lineCount);
+}
+
+std::pair<std::string, int> dispRAMTmpl(std::string dataPath, std::string selectedItem) {
+
+    std::stringstream output;
+    std::string name = "";
+    std::string value  = "";
+    int nItems = 0;
+    int lineNum = 0;
+
+
+    if (!isFileOrDirectory(dataPath)) {
+        return std::make_pair(output.str(), nItems/2);
+    }
+    json_t* jsonData = readJsonFromFile(dataPath);
+    if (jsonData) {
+        size_t arraySize = json_array_size(jsonData);
+
+        for (size_t i = 0; i < arraySize; ++i) {
+            json_t* item = json_array_get(jsonData, i);
+            json_t* keyValue = json_object_get(item, "name");
+
+            if (json_string_value(keyValue) == selectedItem) {
+                output << "These RAM settings will be applied:\n\n\n-------------------------------------------------------------------\n";
+                const char *key;
+                json_t *value;
+                json_object_foreach(item, key, value) {
+                    int spaces[5] = {4,9,6,6,6}; //TODO: remove hardcode; redo text display processing
+                    if (strcmp(key, "name") != 0 && strcmp(key, "t_offsets")) {
+                        output << key << ": " << json_string_value(value) << std::string(spaces[lineNum], ' ');
+                        nItems++;
+                        if (strlen(key) > 5 && strlen(json_string_value(value))> 1) {
+                            output << "\n-------------------------------------------------------------------\n";
+                            nItems += 2;
+                        } else if (nItems % 2 == 0) { //every second item
+                            lineNum++;
+                            output << "\n-------------------------------------------------------------------\n";
+                            nItems += 2;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return std::make_pair(output.str(), nItems/2+5);
 }
 
 bool verifyIntegrity (std::string check) {
@@ -797,6 +848,18 @@ void removeLastNumericWord(std::string& str) {
             break;
         }
     }
+}
+
+std::vector<std::string> parseString(const std::string& str, char delimiter) {
+    std::vector<std::string> result;
+    std::istringstream iss(str);
+    std::string token;
+
+    while (std::getline(iss, token, delimiter)) {
+        result.push_back(token);
+    }
+
+    return result;
 }
 
 std::string getversion(std::string path) {

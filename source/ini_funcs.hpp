@@ -10,15 +10,16 @@
 #include <cctype>   // For ::isspace
 #include <fstream>
 #include "debug_funcs.hpp"
+#include "IniSection.hpp"
 
 // Ini Functions
 
 struct PackageHeader {
     std::string version;
     std::string creator;
-    std::string about;
     std::string github;
-    bool enableNewFeatures{ false };
+    std::string about;
+    bool enableConfigNav{ false };
 };
 PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
     PackageHeader packageHeader;
@@ -38,7 +39,7 @@ PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
     const std::string creatorPrefix = ";creator=";
     const std::string aboutPrefix = ";about=";
     const std::string repoPrefix = ";github=";
-    const std::string newFeaturesMarker = ";enableNewFeatures";
+    const std::string newFeaturesMarker = ";enableConfigNav";
 
     while (fgets(line, sizeof(line), file)) {
         if (line[0] != ';') { // Header ended. Skip further parsing
@@ -100,7 +101,7 @@ PackageHeader getPackageHeaderFromIni(const std::string& filePath) {
         }
 
         if (newFeaturesMarker == strLine.substr(0, newFeaturesMarker.length())) {
-            packageHeader.enableNewFeatures = true;
+            packageHeader.enableConfigNav = true;
         }
 
         size_t repoPos = strLine.find(repoPrefix);
@@ -377,6 +378,38 @@ void cleanIniFormatting(const std::string& filePath) {
 }
 
 
+/*
+1. Get a data vector: data<section<keys<values>>> 
+Open file
+2. For each data section in data vector:
+  2.1. For each key
+    2.1.1. For each value - write it to file
+
+
+
+Close file
+*/
+
+// void setIniFileMulti(const std::string& fileToEdit, const IniSectionInput desiredData) {
+//     IniSectionInput iniData;
+//     if (!loadConfig(fileToEdit, iniData)) {
+//         return; // Exit if file loading failed
+//     }
+
+//     std::ofstream file(fileToEdit);
+//     if (!file.is_open()) {
+//         // std::cerr << "Unable to open file: " << fileToEdit << " for writing\n";
+//         return;
+//     }
+    
+//     for (const auto& [section, keys] : desiredData) {
+//         file << "[" << section << "]\n";
+//         for (const auto& [key, value] : keys) {
+//             file << key << "=" << value << "\n";
+//         }
+//         file << "\n";
+//     }
+// }
 
 bool setIniFile(const std::string& fileToEdit, const std::string& desiredSection, const std::string& desiredKey, const std::string& desiredValue, const std::string& desiredNewKey) {
     FILE* configFile = fopen(fileToEdit.c_str(), "r");
@@ -520,4 +553,36 @@ std::string readIniValue(std::string filePath, std::string section, std::string 
     }
 
     return ""; // Key not found
+}
+
+ std::vector<std::vector<int>> parseIntIniData (std::string input, bool skipFirstItem = true) {
+    // Remove outer brackets
+    input = input.substr(6, input.length() - 3);
+
+    // Create a stringstream for parsing
+    std::stringstream ss(input);
+
+    // Vector to store arrays
+    std::vector<std::vector<int>> result;
+
+    char openBracket, comma1, comma2, closeBracket;
+
+    while (ss >> openBracket) {
+        if (openBracket == '[') {
+            std::vector<int> array(4);
+            ss >> array[0] >> comma1 >> array[1] >> comma2 >> array[2] >> comma1 >> array[3] >> closeBracket;
+            
+            // Check if it's not the first item and then add to the result
+            if (!skipFirstItem) {
+                result.push_back(array);
+            } else {
+                skipFirstItem = false;
+            }
+        } else if (openBracket == ',') {
+            continue;
+        }
+    }
+
+
+    return result;
 }

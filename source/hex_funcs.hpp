@@ -202,8 +202,6 @@ std::string readHexDataAtOffsetF(FILE* file, const std::string& custOffset, cons
         result += std::toupper(lowerToUpper);
     }
 
-    // logMessage("Hex data at offset:" + result);
-    
     return result;
 }
 
@@ -256,6 +254,68 @@ bool hexEditByOffset(const std::string& filePath, const std::string& offsetStr, 
         logMessage("Failed to write data to the file.");
         fclose(file);
         return false;
+    }
+
+    fclose(file);
+    return true;
+    //logMessage("Hex editing completed.");
+}
+
+// Is used when mutiple write iterrations are required to reduce the number of file open/close requests
+bool hexEditByOffsetF(const std::string& filePath, std::map <std::string,std::string> data) {
+
+    // Open the file for reading and writing in binary mode
+    FILE* file = fopen(filePath.c_str(), "rb+");
+    if (!file) {
+        logMessage("Failed to open the file.");
+        return false;
+    }
+
+    for(const auto& ov : data) {
+        
+        // Convert the offset string to std::streampos
+        std::streampos offset = std::stoll(ov.first);
+        std::string hexData = ov.second;
+
+        // Move the file pointer to the specified offset
+        if (fseek(file, offset, SEEK_SET) != 0) {
+            logMessage("Failed to move the file pointer.");
+            fclose(file);
+            return false;
+        }
+
+        // Convert the hex data string to binary data
+        std::vector<unsigned char> binaryData; // Changed to use unsigned char
+        for (std::size_t i = 0; i < hexData.length(); i += 2) {
+            std::string byteString = hexData.substr(i, 2);
+            unsigned char byte = static_cast<unsigned char>(std::stoi(byteString, nullptr, 16)); // Changed to use unsigned char
+            binaryData.push_back(byte);
+        }
+
+        // Calculate the number of bytes to be replaced
+        std::size_t bytesToReplace = binaryData.size();
+
+        // Read the existing data from the file
+        std::vector<unsigned char> existingData(bytesToReplace); // Changed to use unsigned char
+        if (fread(existingData.data(), sizeof(unsigned char), bytesToReplace, file) != bytesToReplace) { // Changed to use unsigned char
+            logMessage("Failed to read existing data from the file.");
+            fclose(file);
+            return false;
+        }
+
+        // Move the file pointer back to the offset
+        if (fseek(file, offset, SEEK_SET) != 0) {
+            logMessage("Failed to move the file pointer.");
+            fclose(file);
+            return false;
+        }
+
+        // Write the replacement binary data to the file
+        if (fwrite(binaryData.data(), sizeof(unsigned char), bytesToReplace, file) != bytesToReplace) { // Changed to use unsigned char
+            logMessage("Failed to write data to the file.");
+            fclose(file);
+            return false;
+        }
     }
 
     fclose(file);

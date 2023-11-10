@@ -2,119 +2,16 @@
 #define STBTT_STATIC
 #define TESLA_INIT_IMPL
 #include <tesla.hpp>
+#include <FanSliderOverlay.hpp>
+#include <KipInfoOverlay.hpp>
+#include <JsonInfoOverlay.hpp>
 #include <utils.hpp>
 
 
 // Overlay booleans
 static bool defaultMenuLoaded = true;
 static std::string package = "";
-bool applied = false;
-bool deleted = false;
-bool resetValue = false;
-std::string prevValue = "";
-bool enableNewFeatures = false;
-
-class HelpOverlay : public tsl::Gui {
-private:
-    std::string helpPath;
-    bool isInSection, inQuotes;
-
-public:
-    HelpOverlay(std::string helpPath) : helpPath(helpPath) {}
-    ~HelpOverlay() {}
-
-    virtual tsl::elm::Element* createUI() override {
-        // logMessage ("HelpOverlay");
-
-        std::pair<std::string, int> textDataPair;
-        constexpr int lineHeight = 20;  // Adjust the line height as needed
-        constexpr int fontSize = 19;    // Adjust the font size as needed
-
-        auto rootFrame = new tsl::elm::OverlayFrame("Help", "Uberhand Package");
-        auto list = new tsl::elm::List();
-
-        if (!isFileOrDirectory(helpPath)) {
-            list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
-            renderer->drawString("Text file not found.\nContact the package dev.", false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
-            }), fontSize + lineHeight);
-            rootFrame->setContent(list);
-            return rootFrame;
-        } else {
-            textDataPair = readTextFromFile(helpPath);
-            std::string textdata = textDataPair.first;
-            int textsize = textDataPair.second;
-            if (!textdata.empty()) {
-                list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize, textdata](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
-                renderer->drawString(textdata.c_str(), false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
-                }), fontSize * textsize + lineHeight);
-                rootFrame->setContent(list);
-                return rootFrame;
-            }
-        }
-            return rootFrame;
-    }
-
-    virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
-        if (keysDown & KEY_B) {
-            tsl::goBack();
-            return true;
-        }
-        return false;
-    }
-};
-
-class InfoOverlay : public tsl::Gui {
-private:
-    std::vector<std::string> kipInfoCommand;
-
-
-public:
-    InfoOverlay(std::vector<std::string> kipInfoCommand) : kipInfoCommand(kipInfoCommand) {}
-    ~InfoOverlay() {}
-
-    virtual tsl::elm::Element* createUI() override {
-        // logMessage ("InfoOverlay");
-
-        std::pair<std::string, int> textDataPair;
-        constexpr int lineHeight = 20;  // Adjust the line height as needed
-        constexpr int fontSize = 19;    // Adjust the font size as needed
-
-        auto rootFrame = new tsl::elm::OverlayFrame("Backup Management", "Uberhand Package","",false,"\uE0E1  Back     \uE0E0  Apply     \uE0E2  Delete");
-        auto list = new tsl::elm::List();
-
-        textDataPair = dispCustData(kipInfoCommand[2], kipInfoCommand[1]);
-        std::string textdata = textDataPair.first;
-        int textsize = textDataPair.second;
-        if (!textdata.empty()) {
-            list->addItem(new tsl::elm::CustomDrawer([lineHeight, fontSize, textdata](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
-            renderer->drawString(textdata.c_str(), false, x, y + lineHeight, fontSize, a(tsl::style::color::ColorText));
-            }), fontSize * textsize + lineHeight);
-            rootFrame->setContent(list);
-        }
-            return rootFrame;
-    }
-
-    virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
-        if (keysDown & KEY_B) {
-            tsl::goBack();
-            return true;
-        }
-         if (keysDown & KEY_A) {
-            copyFileOrDirectory(this->kipInfoCommand[1], "/atmosphere/kips/loader.kip");
-            applied = true;
-            tsl::goBack();
-            return true;
-         }
-         if (keysDown & KEY_X) {
-            deleteFileOrDirectory(this->kipInfoCommand[1]);
-            tsl::goBack();
-            applied = false;
-            deleted = true;
-            return true;
-         }
-        return false;
-    }
-};
+bool enableConfigNav = false;
 
 class ConfigOverlay : public tsl::Gui {
 private:
@@ -216,34 +113,35 @@ public:
         }
         return false;
     }
+    virtual std::string getClass() {return "ConfigOverlay";}
 };
 
 class SelectionOverlay : public tsl::Gui {
 private:
-    std::string filePath, specificKey, pathPattern, pathPatternOn, pathPatternOff, jsonPath, jsonKey, itemName, parentDirName, lastParentDirName, textPath;
+    std::string filePath, specificKey, pathPattern, pathPatternOn, pathPatternOff, jsonPath, jsonKey, itemName, parentDirName, lastParentDirName, textPath, footer;
     std::vector<std::string> filesList, filesListOn, filesListOff, filterList, filterOnList, filterOffList;
     std::vector<std::vector<std::string>> commands;
     bool toggleState = false;
 
 public:
-    SelectionOverlay(const std::string& file, const std::string& key = "", const std::vector<std::vector<std::string>>& cmds = {}) 
-        : filePath(file), specificKey(key), commands(cmds) {}
+    SelectionOverlay(const std::string& file, const std::string& key = "", const std::vector<std::vector<std::string>>& cmds = {}, std::string footer = "") 
+        : filePath(file), specificKey(key), footer(footer), commands(cmds) {}
     ~SelectionOverlay() {}
 
     virtual tsl::elm::Element* createUI() override {
         // logMessage ("SelectionOverlay");
 
-        size_t fifthSlashPos = filePath.find('/', filePath.find('/', filePath.find('/', filePath.find('/') + 1) + 1) + 1);
         bool hasHelp = false;
-        std::string helpPath = "";
-        std::string menuName = "";
+        std::string helpPath;
+        std::string menuName;
+        size_t fifthSlashPos = filePath.find('/', filePath.find('/', filePath.find('/', filePath.find('/') + 1) + 1) + 1);
         if (fifthSlashPos != std::string::npos) {
             // Extract the substring up to the fourth slash
             helpPath = filePath.substr(0, fifthSlashPos);
             if (!specificKey.empty()) {
                 menuName = specificKey;
                 removeLastNumericWord(menuName);
-                helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(filePath)) + "/" + menuName.substr(1) + ".txt";
+                helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(filePath)) + "/" + menuName + ".txt";
             } else {
                 helpPath += "/Help/" + getNameWithoutPrefix(getNameFromPath(filePath)) + ".txt";
             }
@@ -252,13 +150,13 @@ public:
             } else {
                 helpPath = "";
             }
-
         }
-        auto rootFrame = new tsl::elm::OverlayFrame(specificKey.empty() ? getNameWithoutPrefix(getNameFromPath(filePath)) : specificKey.substr(1),
-                                                    "Uberhand Package", "", hasHelp);
+        auto rootFrame = new tsl::elm::OverlayFrame(specificKey.empty() ? getNameWithoutPrefix(getNameFromPath(filePath)) : specificKey,
+                                                    "Uberhand Package", "", hasHelp, footer);
         auto list = new tsl::elm::List();
 
         bool kipInfo = false;
+        bool ramInfo = false;
         bool useFilter = false;
         bool useSource = false;
         bool useJson = false;
@@ -267,6 +165,7 @@ public:
         bool useSplitHeader = false;
         bool markCurKip = false;
         bool markCurIni = false;
+        std::string ramPath = "";
         std::string sourceIni = "";
         std::string sectionIni = "";
         std::string keyIni = "";
@@ -307,6 +206,9 @@ public:
                 } else if (cmd[0] == "kip_info") {
                     jsonPath = preprocessPath(cmd[1]);
                     kipInfo = true;
+                } else if (cmd[0] == "ram_info") {
+                    ramPath = preprocessPath(cmd[1]);
+                    ramInfo = true;
                 } else if (cmd[0] == "json_mark_cur_kip") {
                     jsonPath = preprocessPath(cmd[1]);
                     if (cmd.size() > 2) {
@@ -330,13 +232,14 @@ public:
                         markCurIni = true;
                     }
                 } else if (cmd[0] == "text_source") {
-                        textPath = preprocessPath(cmd[1]);
-                        useText = true;
+                    textPath = preprocessPath(cmd[1]);
+                    useText = true;
                 }
             } 
         }
 
         // Get the list of files matching the pattern
+       
         if (!useToggle) {
             if (useText) {
                 if (!isFileOrDirectory(textPath)) {
@@ -496,13 +399,11 @@ public:
             removeEntryFromList(filterPath, filesList);
         }
         
-        
-        if (!useSplitHeader){
-            list->addItem(new tsl::elm::CategoryHeader(specificKey.substr(1)));
-        }
-        
         // Add each file as a menu item
         int count = 0;
+        std::string jsonSep = "";
+        bool isFirst = true;
+        bool hasSep = false;
         for (const std::string& file : filesList) {
             //if (file.compare(0, filterPath.length(), filterPath) != 0){
             itemName = getNameFromPath(file);
@@ -519,6 +420,7 @@ public:
                 std::string color = "Default";
                 if (useJson) { // For JSON wildcards
                     size_t pos = file.find(" - ");
+                    size_t pos2 = file.find("`");
                     size_t colorPos = file.find(" ::");
                     std::string footer = "";
                     std::string optionName = file;
@@ -530,38 +432,71 @@ public:
                         footer = optionName.substr(pos + 2); // Assign the part after "&&" as the footer
                         optionName = optionName.substr(0, pos); // Strip the "&&" and everything after it
                     }
-                    auto listItem = new tsl::elm::ListItem(optionName);
-                    listItem->setValue(footer);
-                    listItem->setClickListener([count, this, listItem, helpPath](uint64_t keys) { // Add 'command' to the capture list
-                        if (keys & KEY_A) {
-                            // Replace "{json_source}" with file in commands, then execute
-                            if (listItem->getValue() != "DELETED") {
-                                std::string countString = std::to_string(count);
-                                std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(commands, countString, false, true, true);
-                                int result = interpretAndExecuteCommand(modifiedCommands);
-                                if (result == 0) {
-                                    listItem->setValue("DONE", tsl::PredefinedColors::Green);
-                                } else if (result == 1) {
-                                    applied = true;
-                                    tsl::goBack();
-                                } else {
-                                    listItem->setValue("FAIL", tsl::PredefinedColors::Red);
-                                }
-                            }
-                            return true;
-                        } else if (keys & KEY_Y && !helpPath.empty()) {
-                            tsl::changeTo<HelpOverlay>(helpPath);
-                        } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
-                            listItem->setValue("");
+                    if (pos2 == 0) { // separator
+                        if (isFirst) {
+                            jsonSep = optionName.substr(1);
+                            hasSep = true;
                         }
-                        return false;
-                    });
-                    if (color.compare(0, 1, "#") == 0){
-                        listItem->setColor(tsl::PredefinedColors::Custom, color);
-                    } else {
-                        listItem->setColor(defineColor(color));  
+                        else {
+                            auto item = new tsl::elm::CategoryHeader(optionName, true);
+                            list->addItem(item);
+                        }
                     }
-                    list->addItem(listItem);
+                    else {
+                        isFirst = false;
+                        auto listItem = new tsl::elm::ListItem(optionName);
+                        if (ramInfo) {
+                            listItem->setClickListener([count, this, listItem, helpPath, ramPath](uint64_t keys) { // Add 'command' to the capture list
+                                if (keys & KEY_A) {
+                                    tsl::changeTo<JsonInfoOverlay>(ramPath, listItem->getText());
+                                    return true;
+                                } else if (keys & KEY_Y && !helpPath.empty()) {
+                                    tsl::changeTo<HelpOverlay>(helpPath);
+                                } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
+                                    listItem->setValue("");
+                                }
+                                return false;
+                            });
+                            list->addItem(listItem);
+                        } else {
+                            listItem->setValue(footer);
+                            listItem->setClickListener([count, this, listItem, helpPath](uint64_t keys) { // Add 'command' to the capture list
+                                if (keys & KEY_A) {
+                                    if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
+                                        listItem->setValue(prevValue);
+                                        prevValue = "";
+                                        resetValue = false;
+                                    }
+                                    if (listItem->getValue() != "DELETED") {
+                                        // Replace "{json_source}" with file in commands, then execute
+                                        std::string countString = std::to_string(count);
+                                        std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(commands, countString, false, true, true);
+                                        int result = interpretAndExecuteCommand(modifiedCommands);
+                                        if (result == 0) {
+                                            listItem->setValue("DONE", tsl::PredefinedColors::Green);
+                                        } else if (result == 1) {
+                                            applied = true;
+                                            tsl::goBack();
+                                        } else {
+                                            listItem->setValue("FAIL", tsl::PredefinedColors::Red);
+                                        }
+                                    }
+                                    return true;
+                                } else if (keys & KEY_Y && !helpPath.empty()) {
+                                    tsl::changeTo<HelpOverlay>(helpPath);
+                                } else if (keys && (listItem->getValue() == "DONE" || listItem->getValue() == "FAIL")) {
+                                    listItem->setValue("");
+                                }
+                                return false;
+                            });
+                            if (color.compare(0, 1, "#") == 0){
+                                listItem->setColor(tsl::PredefinedColors::Custom, color);
+                            } else {
+                                listItem->setColor(defineColor(color));  
+                            }
+                            list->addItem(listItem);
+                        }
+                    }
                 } else {
                     auto listItem = new tsl::elm::ListItem(itemName);
                     bool listBackups = false;
@@ -589,6 +524,11 @@ public:
                     if (!listBackups) {
                         listItem->setClickListener([file, this, listItem](uint64_t keys) { // Add 'command' to the capture list
                             if (keys & KEY_A) {
+                                if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
+                                    listItem->setValue(prevValue);
+                                    prevValue = "";
+                                    resetValue = false;
+                                }
                                 // Replace "{source}" with file in commands, then execute
                                 if (!prevValue.empty()) {
                                     listItem->setValue(prevValue);
@@ -614,7 +554,7 @@ public:
                         listItem->setClickListener([file, this, listItem, kipInfoCommand](uint64_t keys) { // Add 'command' to the capture list
                             if (keys & KEY_A) {
                                 if (listItem->getValue() != "DELETED")
-                                    tsl::changeTo<InfoOverlay>(kipInfoCommand);
+                                    tsl::changeTo<KipInfoOverlay>(kipInfoCommand);
                             }
                             return false;
                         });
@@ -649,10 +589,16 @@ public:
                         }
                     }
                 });
-
                 list->addItem(toggleListItem);
             } 
             count++;
+        }
+        if (hasSep) {
+            if (!jsonSep.empty()) {
+                list->addItem(new tsl::elm::CategoryHeader(jsonSep), 0, 0);
+            }
+        } else if (!useSplitHeader){
+            list->addItem(new tsl::elm::CategoryHeader(specificKey), 0, 0);
         }
         rootFrame->setContent(list);
         return rootFrame;
@@ -664,7 +610,7 @@ public:
             return true;
         } else if ((applied || deleted) && !keysDown) {
             deleted = false;
-            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
+            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
             if (prevValue.empty())
                 prevValue = focusedItem->getValue();
             if (applied) {
@@ -677,17 +623,22 @@ public:
             deleted = false;
             return true;
         } else if (resetValue && keysDown) {
-            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
-            if (focusedItem->getValue() == "APPLIED") {
-                focusedItem->setValue(prevValue);
-                prevValue = "";
-                resetValue = false;
+            if (this->getFocusedElement()->getClass()  == "ListItem" ){
+                tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
+                if (focusedItem->getClass() == "ListItem" && focusedItem->getValue() == "APPLIED") {
+                    focusedItem->setValue(prevValue);
+                    prevValue = "";
+                    resetValue = false;
+                }
             }
             return true;
         }
         return false;
     }
+
+    virtual std::string getClass() {return "SelectionOverlay";}
 };
+
 
 class SubMenu : public tsl::Gui {
 protected:
@@ -722,7 +673,7 @@ public:
         auto rootFrame = new tsl::elm::OverlayFrame(getNameFromPath(viewsubPath), viewPackage, "" , hasHelp);
         auto list = new tsl::elm::List();
 
-        if (!enableNewFeatures) {
+        if (!enableConfigNav) {
             std::vector<std::string> subdirectories = getSubdirectories(subPath);
             std::sort(subdirectories.begin(), subdirectories.end());
             for (const auto& subDirectory : subdirectories) {
@@ -748,19 +699,23 @@ public:
         std::string subConfigIniPath = subPath + "/" + configFileName;
         std::vector<std::pair<std::string, std::vector<std::vector<std::string>>>> options = loadOptionsFromIni(subConfigIniPath);
         
-        // logMessage("Processing SubMenu");
-
         // Populate the sub menu with options
         for (const auto& option : options) {
             std::string optionName = option.first;
             std::string footer; 
             bool usePattern = false;
-            if (enableNewFeatures && optionName[0] == '>') { // a subdirectory. add a menu item and skip to the next command
+            bool useSlider  = false;
+            std::string headerName;
+            if (enableConfigNav && optionName[0] == '>') { // a subdirectory. add a menu item and skip to the next command
                 auto subDirectory = optionName.substr(1);
                 auto item = new tsl::elm::ListItem(getNameWithoutPrefix(subDirectory));
                 item->setValue("\u25B6", tsl::PredefinedColors::White);
-                item->setClickListener([&, subDirectory](u64 keys)->bool {
+                item->setClickListener([&, subDirectory, item](u64 keys)->bool {
                     if (keys & KEY_A) {
+                        if (!isDirectory(subPath + subDirectory + '/')) {
+                            item->setValue("FAIL", tsl::PredefinedColors::Red);
+                            return true;
+                        }
                         tsl::changeTo<SubMenu>(subPath + subDirectory + '/');
                         return true;
                     }
@@ -773,6 +728,10 @@ public:
                 usePattern = true;
                 optionName = optionName.substr(1); // Strip the "*" character on the left
                 footer = "\u25B6";
+            } else if (optionName[0] == '-') {
+                useSlider = true;
+                optionName = optionName.substr(1); // Strip the "-" character on the left
+                footer = "\u25B6";
             } else {
                 size_t pos = optionName.find(" - ");
                 if (pos != std::string::npos) {
@@ -780,7 +739,15 @@ public:
                     optionName = optionName.substr(0, pos); // Strip the "&&" and everything after it
                 }
             }
-            
+
+            size_t pos = optionName.find(" ;; "); // Find the custom display header
+            if (pos!= std::string::npos) {
+                headerName = optionName.substr(pos + 4); // Strip the item name
+                optionName = optionName.substr(0, pos); // Strip the displayName
+            } else {
+                headerName = optionName;
+            }
+
             // Extract the path pattern from commands
             bool useToggle = false;
             bool isSeparator = false;
@@ -798,17 +765,14 @@ public:
                     } else if (cmd[0] == "source_off") {
                         pathReplaceOff = cmd[1];
                         useToggle = true;
-                    } 
-                    //else if (cmd[0] == "json_data") {
-                    //    jsonPath = cmd[1];
-                    //}
+                    }
                 } 
             }
 
             if (isSeparator) {
                 auto item = new tsl::elm::CategoryHeader(optionName, true);
                 list->addItem(item);
-            } else if (usePattern || !useToggle){
+            } else if (usePattern || !useToggle || useSlider) {
                 auto listItem = static_cast<tsl::elm::ListItem*>(nullptr);
                 if ((footer == "\u25B6") || (footer.empty())) {
                     listItem = new tsl::elm::ListItem(optionName, footer);
@@ -818,10 +782,17 @@ public:
                 }
                 
                 //std::vector<std::vector<std::string>> modifiedCommands = getModifyCommands(option.second, pathReplace);
-                listItem->setClickListener([command = option.second, keyName = option.first, subPath = this->subPath, usePattern, listItem, helpPath](uint64_t keys) {
+                listItem->setClickListener([command = option.second, keyName = headerName, subPath = this->subPath, usePattern, listItem, helpPath, useSlider](uint64_t keys) {
                     if (keys & KEY_A) {
+                        if (listItem->getValue() == "APPLIED" && !prevValue.empty()) {
+                            listItem->setValue(prevValue);
+                            prevValue = "";
+                            resetValue = false;
+                        }
                         if (usePattern) {
                             tsl::changeTo<SelectionOverlay>(subPath, keyName, command);
+                        } else if (useSlider) {
+                            tsl::changeTo<FanSliderOverlay>(subPath, keyName, command);
                         } else {
                             // Interpret and execute the command
                             int result = interpretAndExecuteCommand(command);
@@ -995,16 +966,19 @@ public:
             focusedItem->setValue("APPLIED", tsl::PredefinedColors::Green);
             return true;
         } else if (resetValue && keysDown) {
-            tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this-> getFocusedElement());
-            if (focusedItem->getValue() == "APPLIED"){
-                focusedItem->setValue(prevValue);
-                prevValue = "";
-                resetValue = false;
+            if (this->getFocusedElement()->getClass()  == "ListItem" ){
+                tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
+                if (focusedItem->getClass() == "ListItem" && focusedItem->getValue() == "APPLIED") {
+                    focusedItem->setValue(prevValue);
+                    prevValue = "";
+                    resetValue = false;
+                }
             }
             return true;
         }
         return false;
     }
+    virtual std::string getClass() {return "SubMenu";}
 };
 
 class MainMenu;
@@ -1037,7 +1011,8 @@ public:
                 }
         std::string subConfigIniPath = subPath + "/" + configFileName;
         PackageHeader packageHeader = getPackageHeaderFromIni(subConfigIniPath);
-        enableNewFeatures = packageHeader.enableNewFeatures;
+        enableConfigNav = packageHeader.enableConfigNav;
+
         auto rootFrame = static_cast<tsl::elm::OverlayFrame*>(SubMenu::createUI());
         rootFrame->setTitle(getNameWithoutPrefix(package));
         rootFrame->setSubtitle("                             "); // FIXME: former subtitle is not fully erased if new string is shorter
@@ -1051,6 +1026,8 @@ public:
         }
         return false;
     }
+    virtual std::string getClass() {return "Package";}
+
 };
 
 class Updater : public tsl::Gui {
@@ -1123,6 +1100,8 @@ public:
     ~MainMenu() {}
 
     virtual tsl::elm::Element* createUI() override {
+        // logMessage ("MainMenu");
+
         defaultMenuMode = "overlays";
         menuMode = "overlays";
         
@@ -1500,6 +1479,7 @@ public:
         }
         return false;
     }
+    virtual std::string getClass() {return "MainMenu";}
 };
 
 class Overlay : public tsl::Overlay {
