@@ -924,7 +924,7 @@ std::map<std::string, std::string> packageUpdateCheck(std::string subConfigIniPa
         deleteFileOrDirectory("sdmc:/config/uberhand/downloads/temp.json");
         //logMessage("repoVer " + packageInfo["repoVer"]);
         //logMessage("localVer " + packageInfo["localVer"]);
-        packageInfo["type"] = "zip";
+        packageInfo["type"] = "pkgzip";
     }
     return packageInfo;
 }
@@ -945,8 +945,12 @@ std::map<std::string, std::string> ovlUpdateCheck(std::map<std::string, std::str
     if (currentOverlay["localVer"] != ovlItemToUpdate["repoVer"]) {
         ovlItemToUpdate["link"] = getLinkOnLatest("/config/uberhand/downloads/temp.json", std::stoi(currentOverlay["downloadEntry"]));
         ovlItemToUpdate["name"] = currentOverlay["name"];
-        ovlItemToUpdate["type"] = "ovl";
-        deleteFileOrDirectory("sdmc:/config/uberhand/downloads/temp.json");
+        if (getExtension(getFileNameFromURL(ovlItemToUpdate["link"])) == "zip") {
+            ovlItemToUpdate["type"] = "ovlzip";
+        } else {
+            ovlItemToUpdate["type"] = "ovl";
+        }
+        deleteFileOrDirectory("sdmc:/config/ultrahand/downloads/temp.json");
         return ovlItemToUpdate;
     }
     deleteFileOrDirectory("sdmc:/config/uberhand/downloads/temp.json");
