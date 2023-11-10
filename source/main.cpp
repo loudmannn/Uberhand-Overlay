@@ -1252,7 +1252,7 @@ public:
                             bool NeedUpdate = false;
                             std::vector<std::map<std::string, std::string>> items;
                             if (!coolerMode) {
-                                std::vector<std::string> overlays = getFilesListFromDirectory("sdmc:/switch/.overlays/");
+                                std::vector<std::string> overlays = getFilesListByWildcard("sdmc:/switch/.overlays/*.ovl");
                                 std::map<std::string, std::string> package;
                                 downloadFile(repoUrl, "sdmc:/config/ultrahand/Updater.ini");
                                 std::vector<std::pair<std::string, std::vector<std::vector<std::string>>>> options = loadOptionsFromIni("sdmc:/config/ultrahand/Updater.ini");
