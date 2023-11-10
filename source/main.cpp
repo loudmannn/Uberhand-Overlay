@@ -12,6 +12,7 @@
 static bool defaultMenuLoaded = true;
 static std::string package = "";
 bool enableConfigNav = false;
+bool DownloadProcessing = false;
 
 class ConfigOverlay : public tsl::Gui {
 private:
@@ -989,26 +990,6 @@ public:
 
     tsl::elm::Element* createUI() override {
         package = getNameFromPath(subPath);
-        if (isFileOrDirectory(subPath + "/init.ini")) {
-                    std::vector<std::pair<std::string, std::vector<std::vector<std::string>>>> options = loadOptionsFromIni(subPath + "/init.ini");
-                    for (const auto& option : options) {
-                        if (interpretAndExecuteCommand(getModifyCommands(option.second, subPath + option.first)) == -1) {
-                            logMessage("Init failed!");
-
-                            auto rootFrame = new tsl::elm::OverlayFrame(getNameWithoutPrefix(package), "Uberhand Package");
-                            auto list = new tsl::elm::List();
-
-                            list->addItem(new tsl::elm::CustomDrawer([](tsl::gfx::Renderer *renderer, s32 x, s32 y, s32 w, s32 h) {
-                                renderer->drawString("Initialization failed", false, x, y + 20, 19, a(tsl::style::color::ColorText));
-                            }), 19 + 20);
-
-                            rootFrame->setContent(list);
-                            return rootFrame;
-                        } else {
-                            deleteFileOrDirectory(subPath + "/init.ini");
-                        }
-                    }
-                }
         std::string subConfigIniPath = subPath + "/" + configFileName;
         PackageHeader packageHeader = getPackageHeaderFromIni(subConfigIniPath);
         enableConfigNav = packageHeader.enableConfigNav;
@@ -1045,12 +1026,22 @@ public:
             auto* listItem = new tsl::elm::ListItem(item.at("name"), item.at("repoVer"));
             listItem->setClickListener([item, listItem](s64 key) {
                 if (key & KEY_A) {
+                    if (!DownloadProcessing) {
+                        DownloadProcessing = true;
+                        listItem->setText("Processing...");
+                        return true;
+                    }
+                }
+                if (DownloadProcessing) {
                     std::string type = item.at("type");
                     std::string link = item.at("link");
+                    std::string name = item.at("name");
 
                     if (type == "ovl") {
                         if (downloadFile(link, "sdmc:/switch/.overlays/")) {
+                            listItem->setText(name);
                             listItem->setValue("DONE", tsl::PredefinedColors::Green);
+                            DownloadProcessing = false;
                             return true;
                         }
                     } else if (type == "pkgzip") {
@@ -1059,7 +1050,9 @@ public:
 
                         if (downloadFile(link, tempZipPath) && unzipFile(tempZipPath, destFolderPath)) {
                             deleteFileOrDirectory(tempZipPath);
+                            listItem->setText(name);
                             listItem->setValue("DONE", tsl::PredefinedColors::Green);
+                            DownloadProcessing = false;
                             return true;
                         }
                     } else if (type == "ovlzip") {
@@ -1068,14 +1061,16 @@ public:
 
                         if (downloadFile(link, tempZipPath) && unzipFile(tempZipPath, destFolderPath)) {
                             deleteFileOrDirectory(tempZipPath);
+                            listItem->setText(name);
                             listItem->setValue("DONE", tsl::PredefinedColors::Green);
+                            DownloadProcessing = false;
                             return true;
                         }
                     }
 
                     listItem->setValue("FAIL", tsl::PredefinedColors::Red);
+                    DownloadProcessing = false;
                 }
-
                 return false;
             });
 
@@ -1258,6 +1253,13 @@ public:
             auto updaterItem = new tsl::elm::ListItem("Check for Updates");
             updaterItem->setClickListener([this, updaterItem](uint64_t keys) {
                         if (keys & KEY_A) {
+                            if (!DownloadProcessing) {
+                                DownloadProcessing = true;
+                                updaterItem->setText("Processing...");
+                                return true;
+                            }
+                        }
+                        if (DownloadProcessing) {
                             bool NeedUpdate = false;
                             std::vector<std::map<std::string, std::string>> items;
                             if (!coolerMode) {
@@ -1302,9 +1304,11 @@ public:
                             }
                             
                             if (NeedUpdate){
+                                DownloadProcessing = false;
                                 tsl::changeTo<Updater>(items);
                             }
                             updaterItem->setText("No updates");
+                            DownloadProcessing = false;
                             return true;
                         }
                         return false;
@@ -1361,9 +1365,17 @@ public:
                     if (showPackageVersions)
                         listItem->setValue(packageHeader.version);
             
-                    listItem->setClickListener([this, subPath = packageDirectory + subdirectory + "/"](uint64_t keys) {
+                    listItem->setClickListener([this, listItem, subPath = packageDirectory + subdirectory + "/"](uint64_t keys) {
                         if (keys & KEY_A) {
-                            tsl::changeTo<Package>(subPath);
+                            if (isFileOrDirectory(subPath + "/init.ini")) {
+                                if (!DownloadProcessing) {
+                                    DownloadProcessing = true;
+                                    listItem->setText("Processing...");
+                                    return true;
+                                }
+                            } else {
+                                tsl::changeTo<Package>(subPath);
+                            }
                             return true;
                         } else if (keys & KEY_PLUS) {
                             std::string starFilePath = subPath + ".star";
@@ -1374,6 +1386,20 @@ public:
                             }
                             tsl::changeTo<MainMenu>();
                             return true;
+                        }
+                        if (DownloadProcessing) {
+                            std::vector<std::pair<std::string, std::vector<std::vector<std::string>>>> options = loadOptionsFromIni(subPath + "/init.ini");
+                                for (const auto& option : options) {
+                                    if (interpretAndExecuteCommand(getModifyCommands(option.second, subPath + option.first)) == -1) {
+                                        logMessage("Init failed!");
+                                        DownloadProcessing = false;
+                                        listItem->setValue("FAIL", tsl::PredefinedColors::Red);
+                                    } else {
+                                        deleteFileOrDirectory(subPath + "/init.ini");
+                                        DownloadProcessing = false;
+                                        tsl::changeTo<Package>(subPath);
+                                    }
+                                }
                         }
                         return false;
                     });
@@ -1388,7 +1414,13 @@ public:
             auto updaterItem = new tsl::elm::ListItem("Check for Updates");
             updaterItem->setClickListener([this, subdirectories, updaterItem](uint64_t keys) {
                         if (keys & KEY_A) {
-                            //setIniFile(packageDirectory + "Updater/config.ini", "App", "back", "", "");
+                            if (!DownloadProcessing) {
+                                DownloadProcessing = true;
+                                updaterItem->setText("Processing...");
+                                return true;
+                            }
+                        }
+                        if (DownloadProcessing) {
                             bool NeedUpdate = false;
                             std::vector<std::map<std::string, std::string>> items;
                             for (const auto& taintedSubdirectory : subdirectories) {
@@ -1399,8 +1431,10 @@ public:
                                     }
                             }
                             if (NeedUpdate){
+                                DownloadProcessing = false;
                                 tsl::changeTo<Updater>(items);
                             }
+                            DownloadProcessing = false;
                             updaterItem->setText("No updates");
                             return true;
                         }
