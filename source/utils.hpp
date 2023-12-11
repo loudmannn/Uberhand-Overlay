@@ -400,7 +400,7 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
             // Edit command
             if (command.size() == 3) {
                 sourcePath = preprocessPath(command[1]);
-                //logMessage(command[2]);
+                // logMessage(command[2]);
                 IniSectionInput iniData = readIniFile(sourcePath);
                 IniSectionInput desiredData = parseDesiredData(command[2]);
                 updateIniData(iniData, desiredData);
@@ -676,11 +676,11 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
             json_t* item = json_array_get(jsonData, i);
             if (item && json_is_object(item)) {
                 json_t* keyValue = json_object_get(item, "name");
-                //logMessage(json_string_value(keyValue));
-                std::string test;
+                // logMessage(json_string_value(keyValue));
+                std::string tabBaseCheck;
                 if (keyValue)
-                    test = json_string_value(keyValue);
-                if (test == "TABLE_BASE") {
+                    tabBaseCheck = json_string_value(keyValue);
+                if (tabBaseCheck == "TABLE_BASE") {
                     tableShiftMode = true;
                     std::string tableStateStr = readHexDataAtOffsetF(file, custOffset, "43555354", "44", 1);
                     tableState = reversedHexToInt(tableStateStr);
