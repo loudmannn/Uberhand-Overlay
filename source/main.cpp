@@ -353,7 +353,12 @@ public:
                                             }
                                         }
                                         if (valueStr == currentHex) {
-                                            name = std::string(json_string_value(keyValue)) + " - " + checkmarkChar;
+                                            name = json_string_value(keyValue);
+                                            if (name.find(" - ") != std::string::npos) {
+                                                name = name +  " | " + checkmarkChar;
+                                            } else {   
+                                                name = name +  " - " + checkmarkChar;
+                                            }
                                             searchCurrent = false;
                                         }
                                         else {
@@ -363,7 +368,12 @@ public:
                                         char* iniValueStr = (char*)json_string_value(hexValue);
                                         std::string iniValue = readIniValue(sourceIni, sectionIni, keyIni);
                                         if (iniValueStr == iniValue) {
-                                            name = std::string(json_string_value(keyValue)) +  " - " + checkmarkChar;
+                                            name = json_string_value(keyValue);
+                                            if (name.find(" - ") != std::string::npos) {
+                                                name = name +  " | " + checkmarkChar;
+                                            } else {   
+                                                name = name +  " - " + checkmarkChar;
+                                            }
                                             searchCurrent = false;
                                         }
                                         else {
@@ -662,8 +672,16 @@ public:
                 while(this->savedItem != this->getFocusedElement()) {
                     this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
                 }
+                // For some reason sometimes tesla does not scroll to the correct item in one loop
+                // So check if we actually hit the current item
+                if (this->savedItem != this->getFocusedElement()) {
+                    while(this->savedItem != this->getFocusedElement()) {
+                        this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
+                    } 
+                }
             }
             this->savedItem = nullptr;
+            return true;
         }
         if (this->adjuct_top) { // Adjust cursor to the top item after jump bot-top
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
