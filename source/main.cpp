@@ -1909,6 +1909,12 @@ public:
                     // Add a section break with small text to indicate the "Packages" section
                     list->addItem(new tsl::elm::CategoryHeader("Commands"));
                 }
+
+                if (option.second.front()[0] == "separator") {
+                    auto item = new tsl::elm::CategoryHeader(optionName, true);
+                    list->addItem(item);
+                    continue;
+                }
                 
                 //std::string header;
                 //if ((optionName == "Shutdown")) {
