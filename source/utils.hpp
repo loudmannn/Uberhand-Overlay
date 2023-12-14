@@ -759,7 +759,6 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                         json_t* j_state     = json_object_get(item, "state");
                         json_t* j_increment = json_object_get(item, "increment");
                         json_t* j_prefix    = json_object_get(item, "prefix");
-                        json_t* j_suffix    = json_object_get(item, "suffix");
 
                         if (j_state) {
                             state = json_string_value(j_state);
@@ -840,9 +839,6 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                                     }
                                     if (j_prefix) {
                                         name = json_string_value(j_prefix) + name;
-                                    }
-                                    if (j_suffix) {
-                                        name = name + json_string_value(j_suffix);
                                     }
                                     output += name + ": " + std::to_string(intValue);
                                     if (intValue < 100) 
