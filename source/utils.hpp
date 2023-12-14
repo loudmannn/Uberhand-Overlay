@@ -336,7 +336,7 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
                     destinationPath = preprocessPath(command[2]);
                     bool result;
                     if (sourcePath.find('*') != std::string::npos) {
-                    // Delete files or directories by pattern
+                    // Copy files or directories by pattern
                     result = copyFileOrDirectoryByPattern(sourcePath, destinationPath);
                     } else {
                         result = copyFileOrDirectory(sourcePath, destinationPath);
@@ -758,6 +758,7 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                         json_t* j_extent    = json_object_get(item, "extent");
                         json_t* j_state     = json_object_get(item, "state");
                         json_t* j_increment = json_object_get(item, "increment");
+                        json_t* j_prefix    = json_object_get(item, "prefix");
 
                         if (j_state) {
                             state = json_string_value(j_state);
@@ -835,6 +836,9 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                                     }
                                     if (intValue > 1500) {
                                         intValue = intValue/1000;
+                                    }
+                                    if (j_prefix) {
+                                        name = json_string_value(j_prefix) + name;
                                     }
                                     output += name + ": " + std::to_string(intValue);
                                     if (intValue < 100) 
