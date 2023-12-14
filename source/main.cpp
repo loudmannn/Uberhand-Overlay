@@ -115,10 +115,12 @@ public:
         if (this->adjuct_top) { // Adjust cursor to the top item after jump bot-top
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             this->adjuct_top = false;
+            return true;
         }
         if (this->adjuct_bot) {  // Adjust cursor to the top item after jump top-bot
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             this->adjuct_bot = false;
+            return true;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DDOWN) || (keysDown & KEY_DOWN)) {
@@ -667,12 +669,14 @@ public:
     bool adjuct_top, adjuct_bot = false;
 
     virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
-        if (this->savedItem != nullptr && this->savedItem != this->getFocusedElement() && !keysDown) {
-            while(this->savedItem != this->getFocusedElement()) {
-                    this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
+        if (!keysDown) {
+            if (this->savedItem != nullptr && this->savedItem != this->getFocusedElement()) {
+                while(this->savedItem != this->getFocusedElement()) {
+                        this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
+                }
+            } else {
+                this->savedItem = nullptr;
             }
-        } else if (!keysDown) {
-            this->savedItem = nullptr;
         }
         if (resetValue && keysDown) {
             if (this->getFocusedElement()->getClass()  == "ListItem" ){
@@ -687,10 +691,12 @@ public:
         if (this->adjuct_top) { // Adjust cursor to the top item after jump bot-top
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             this->adjuct_top = false;
+            return true;
         }
         if (this->adjuct_bot) {  // Adjust cursor to the top item after jump top-bot
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             this->adjuct_bot = false;
+            return true;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DDOWN) || (keysDown & KEY_DOWN)) {
@@ -1186,10 +1192,12 @@ public:
         if (this->adjuct_top) { // Adjust cursor to the top item after jump bot-top
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             this->adjuct_top = false;
+            return true;
         }
         if (this->adjuct_bot) {  // Adjust cursor to the top item after jump top-bot
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             this->adjuct_bot = false;
+            return true;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DDOWN) || (keysDown & KEY_DOWN)) {
@@ -1201,7 +1209,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             }
-            return true;
+            return false;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DUP) || (keysDown & KEY_UP)) {
@@ -1213,7 +1221,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             }
-            return true;
+            return false;
         }
         if (keysDown & KEY_L) { // Scroll to up for 5 items
             scrollListItems(this, ShiftFocusMode::UpNum);
@@ -1273,10 +1281,12 @@ public:
         if (this->adjuct_top) { // Adjust cursor to the top item after jump bot-top
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             this->adjuct_top = false;
+            return true;
         }
         if (this->adjuct_bot) {  // Adjust cursor to the top item after jump top-bot
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             this->adjuct_bot = false;
+            return true;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DDOWN) || (keysDown & KEY_DOWN)) {
@@ -1288,7 +1298,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             }
-            return true;
+            return false;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DUP) || (keysDown & KEY_UP)) {
@@ -1300,7 +1310,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             }
-            return true;
+            return false;
         }
         if (keysDown & KEY_L) { // Scroll to up for 5 items
             scrollListItems(this, ShiftFocusMode::UpNum);
@@ -1403,10 +1413,12 @@ public:
         if (this->adjuct_top) { // Adjust cursor to the top item after jump bot-top
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             this->adjuct_top = false;
+            return true;
         }
         if (this->adjuct_bot) {  // Adjust cursor to the top item after jump top-bot
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             this->adjuct_bot = false;
+            return true;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DDOWN) || (keysDown & KEY_DOWN)) {
@@ -1418,7 +1430,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             }
-            return true;
+            return false;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DUP) || (keysDown & KEY_UP)) {
@@ -1430,7 +1442,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             }
-            return true;
+            return false;
         }
         if (keysDown & KEY_L) { // Scroll to up for 5 items
             scrollListItems(this, ShiftFocusMode::UpNum);
@@ -1984,10 +1996,12 @@ public:
         if (this->adjuct_top) { // Adjust cursor to the top item after jump bot-top
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             this->adjuct_top = false;
+            return true;
         }
         if (this->adjuct_bot) {  // Adjust cursor to the top item after jump top-bot
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             this->adjuct_bot = false;
+            return true;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DDOWN) || (keysDown & KEY_DOWN)) {
@@ -1999,7 +2013,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             }
-            return true;
+            return false;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DUP) || (keysDown & KEY_UP)) {
@@ -2011,7 +2025,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             }
-            return true;
+            return false;
         }
         if (keysDown & KEY_L) { // Scroll to up for 5 items
             scrollListItems(this, ShiftFocusMode::UpNum);
