@@ -667,21 +667,22 @@ public:
     bool adjuct_top, adjuct_bot = false;
 
     virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
-        if (this->savedItem != nullptr) {
-            if (this->savedItem != this->getFocusedElement()) {
-                while(this->savedItem != this->getFocusedElement()) {
+        if (this->savedItem != nullptr && this->savedItem != this->getFocusedElement() && !keysDown) {
+            while(this->savedItem != this->getFocusedElement()) {
                     this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
-                }
-                // For some reason sometimes tesla does not scroll to the correct item in one loop
-                // So check if we actually hit the current item
-                if (this->savedItem != this->getFocusedElement()) {
-                    while(this->savedItem != this->getFocusedElement()) {
-                        this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
-                    } 
+            }
+        } else if (!keysDown) {
+            this->savedItem = nullptr;
+        }
+        if (resetValue && keysDown) {
+            if (this->getFocusedElement()->getClass()  == "ListItem" ){
+                tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
+                if (focusedItem->getClass() == "ListItem" && focusedItem->getValue() == "APPLIED") {
+                    focusedItem->setValue(prevValue);
+                    prevValue = "";
+                    resetValue = false;
                 }
             }
-            this->savedItem = nullptr;
-            return true;
         }
         if (this->adjuct_top) { // Adjust cursor to the top item after jump bot-top
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
@@ -746,16 +747,6 @@ public:
                 focusedItem->setValue("DELETED", tsl::PredefinedColors::Red);
             applied = false;
             deleted = false;
-            return true;
-        } else if (resetValue && keysDown) {
-            if (this->getFocusedElement()->getClass()  == "ListItem" ){
-                tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
-                if (focusedItem->getClass() == "ListItem" && focusedItem->getValue() == "APPLIED") {
-                    focusedItem->setValue(prevValue);
-                    prevValue = "";
-                    resetValue = false;
-                }
-            }
             return true;
         }
         return false;
@@ -1182,6 +1173,16 @@ public:
     bool adjuct_top, adjuct_bot = false;
 
     virtual bool handleInput(uint64_t keysDown, uint64_t keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
+        if (resetValue && keysDown) {
+            if (this->getFocusedElement()->getClass()  == "ListItem" ){
+                tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
+                if (focusedItem->getClass() == "ListItem" && focusedItem->getValue() == "APPLIED") {
+                    focusedItem->setValue(prevValue);
+                    prevValue = "";
+                    resetValue = false;
+                }
+            }
+        }
         if (this->adjuct_top) { // Adjust cursor to the top item after jump bot-top
             this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             this->adjuct_top = false;
@@ -1200,7 +1201,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             }
-            return false;
+            return true;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DUP) || (keysDown & KEY_UP)) {
@@ -1212,7 +1213,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             }
-            return false;
+            return true;
         }
         if (keysDown & KEY_L) { // Scroll to up for 5 items
             scrollListItems(this, ShiftFocusMode::UpNum);
@@ -1239,16 +1240,6 @@ public:
             if (prevValue.empty())
                 prevValue = focusedItem->getValue();
             focusedItem->setValue("APPLIED", tsl::PredefinedColors::Green);
-            return true;
-        } else if (resetValue && keysDown) {
-            if (this->getFocusedElement()->getClass()  == "ListItem" ){
-                tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
-                if (focusedItem->getClass() == "ListItem" && focusedItem->getValue() == "APPLIED") {
-                    focusedItem->setValue(prevValue);
-                    prevValue = "";
-                    resetValue = false;
-                }
-            }
             return true;
         }
         return false;
@@ -1297,7 +1288,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             }
-            return false;
+            return true;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DUP) || (keysDown & KEY_UP)) {
@@ -1309,7 +1300,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             }
-            return false;
+            return true;
         }
         if (keysDown & KEY_L) { // Scroll to up for 5 items
             scrollListItems(this, ShiftFocusMode::UpNum);
@@ -1427,7 +1418,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             }
-            return false;
+            return true;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DUP) || (keysDown & KEY_UP)) {
@@ -1439,7 +1430,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             }
-            return false;
+            return true;
         }
         if (keysDown & KEY_L) { // Scroll to up for 5 items
             scrollListItems(this, ShiftFocusMode::UpNum);
@@ -2008,7 +1999,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Up);
             }
-            return false;
+            return true;
         }
         // Jump bot-top: scroll to the top after hitting the last list item
         if ((keysDown & KEY_DUP) || (keysDown & KEY_UP)) {
@@ -2020,7 +2011,7 @@ public:
             } else { // Adjust to account for tesla key processing
                 this->requestFocus(this->getTopElement(), tsl::FocusDirection::Down);
             }
-            return false;
+            return true;
         }
         if (keysDown & KEY_L) { // Scroll to up for 5 items
             scrollListItems(this, ShiftFocusMode::UpNum);
