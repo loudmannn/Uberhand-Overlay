@@ -340,13 +340,13 @@ public:
                                     bool hexOrDec = (hexValue || decValue);
                                     json_t* colorValue = json_object_get(item, "color");
                                     if (markCurKip && hexOrDec && searchCurrent) {
-                                        std::string valueStr;
+                                        const char* valueStr;
                                         if (hexValue) {
                                             valueStr = json_string_value(hexValue);
                                         } else if (decValue) {
                                             valueStr = json_string_value(decValue);
                                         }
-                                        size_t hexLength = strlen(valueStr.c_str())/2 >= 2 ? strlen(valueStr.c_str())/2 : 2;
+                                        size_t hexLength = std::max(strlen(valueStr)/2, 2);
                                         if (detectSize) {
                                             detectSize = false;
                                             currentHex = readHexDataAtOffset("/atmosphere/kips/loader.kip", "43555354", offset, hexLength); // Read the data from kip with offset starting from 'C' in 'CUST'
@@ -367,7 +367,7 @@ public:
                                             name = json_string_value(keyValue);
                                         }
                                     } else if (markCurIni && hexValue && searchCurrent) {
-                                        char* iniValueStr = (char*)json_string_value(hexValue);
+                                        char* iniValueStr = json_string_value(hexValue);
                                         std::string iniValue = readIniValue(sourceIni, sectionIni, keyIni);
                                         if (iniValueStr == iniValue) {
                                             name = json_string_value(keyValue);
@@ -681,7 +681,7 @@ public:
         if (resetValue && keysDown) {
             if (this->getFocusedElement()->getClass()  == "ListItem" ){
                 tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
-                if (focusedItem->getClass() == "ListItem" && focusedItem->getValue() == "APPLIED") {
+                if (focusedItem->getValue() == "APPLIED") {
                     focusedItem->setValue(prevValue);
                     prevValue = "";
                     resetValue = false;
@@ -773,7 +773,7 @@ public:
     std::string findCurrent(std::string jsonPath, std::string offset) {
         std::string dispValue, searchKey;
         size_t hexLength;
-        std::string valueStr;
+        const char* valueStr;
 
         json_t* jsonData = readJsonFromFile(jsonPath);
         if (jsonData && json_is_array(jsonData)) {
@@ -799,7 +799,7 @@ public:
                     json_decref(jsonData);
                     return "\u25B6";
                 }
-                hexLength = strlen(valueStr.c_str())/2 >= 2 ? strlen(valueStr.c_str())/2 : 2;
+                hexLength = std::max(strlen(valueStr)/2, 2);
                 std::string currentHex = readHexDataAtOffset("/atmosphere/kips/loader.kip", "43555354", offset, hexLength);
                 if (!currentHex.empty()) {
                     if (searchKey == "dec") {
@@ -1182,7 +1182,7 @@ public:
         if (resetValue && keysDown) {
             if (this->getFocusedElement()->getClass()  == "ListItem" ){
                 tsl::elm::ListItem* focusedItem = dynamic_cast<tsl::elm::ListItem*>(this->getFocusedElement());
-                if (focusedItem->getClass() == "ListItem" && focusedItem->getValue() == "APPLIED") {
+                if (focusedItem->getValue() == "APPLIED") {
                     focusedItem->setValue(prevValue);
                     prevValue = "";
                     resetValue = false;
