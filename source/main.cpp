@@ -346,7 +346,8 @@ public:
                                         } else if (decValue) {
                                             valueStr = json_string_value(decValue);
                                         }
-                                        size_t hexLength = std::max(strlen(valueStr)/2, 2);
+                                        int hexLength = strlen(valueStr)/2;
+                                        hexLength = std::max(hexLength, 2);
                                         if (detectSize) {
                                             detectSize = false;
                                             currentHex = readHexDataAtOffset("/atmosphere/kips/loader.kip", "43555354", offset, hexLength); // Read the data from kip with offset starting from 'C' in 'CUST'
@@ -367,7 +368,7 @@ public:
                                             name = json_string_value(keyValue);
                                         }
                                     } else if (markCurIni && hexValue && searchCurrent) {
-                                        char* iniValueStr = json_string_value(hexValue);
+                                        const char* iniValueStr = json_string_value(hexValue);
                                         std::string iniValue = readIniValue(sourceIni, sectionIni, keyIni);
                                         if (iniValueStr == iniValue) {
                                             name = json_string_value(keyValue);
@@ -772,7 +773,7 @@ public:
 
     std::string findCurrent(std::string jsonPath, std::string offset) {
         std::string dispValue, searchKey;
-        size_t hexLength;
+        int hexLength;
         const char* valueStr;
 
         json_t* jsonData = readJsonFromFile(jsonPath);
@@ -799,7 +800,8 @@ public:
                     json_decref(jsonData);
                     return "\u25B6";
                 }
-                hexLength = std::max(strlen(valueStr)/2, 2);
+                hexLength = strlen(valueStr)/2;
+                hexLength = std::max(hexLength, 2);
                 std::string currentHex = readHexDataAtOffset("/atmosphere/kips/loader.kip", "43555354", offset, hexLength);
                 if (!currentHex.empty()) {
                     if (searchKey == "dec") {
