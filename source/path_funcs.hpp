@@ -91,26 +91,6 @@ bool deleteFileOrDirectory(const std::string& pathToDelete) {
                 return true;
                 // Deletion successful
             }
-        } else if (S_ISDIR(pathStat.st_mode)) {
-            // Delete all files in the directory
-            DIR* directory = opendir(pathToDelete.c_str());
-            if (directory != nullptr) {
-                dirent* entry;
-                while ((entry = readdir(directory)) != nullptr) {
-                    std::string fileName = entry->d_name;
-                    if (fileName != "." && fileName != "..") {
-                        std::string filePath = pathToDelete + "/" + fileName;
-                        deleteFileOrDirectory(filePath);
-                    }
-                }
-                closedir(directory);
-            }
-
-            // Remove the directory itself
-            if (rmdir(pathToDelete.c_str()) == 0) {
-                return true;
-                // Deletion successful
-            }
         }
     }
     return false;
