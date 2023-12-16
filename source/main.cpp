@@ -337,7 +337,9 @@ public:
                                     std::string name;
                                     json_t* hexValue = json_object_get(item, "hex");
                                     json_t* decValue = json_object_get(item, "dec");
+                                    json_t* otherValue = json_object_get(item, "value");
                                     bool hexOrDec = (hexValue || decValue);
+                                    bool hexOrDecOrVal = (hexOrDec || otherValue);
                                     json_t* colorValue = json_object_get(item, "color");
                                     if (markCurKip && hexOrDec && searchCurrent) {
                                         const char* valueStr;
@@ -367,8 +369,15 @@ public:
                                         else {
                                             name = json_string_value(keyValue);
                                         }
-                                    } else if (markCurIni && hexValue && searchCurrent) {
-                                        const char* iniValueStr = json_string_value(hexValue);
+                                    } else if (markCurIni && hexOrDecOrVal && searchCurrent) {
+                                        const char* iniValueStr; 
+                                        if (hexValue) {
+                                            iniValueStr = json_string_value(hexValue);
+                                        } else if (decValue) {
+                                            iniValueStr = json_string_value(decValue);
+                                        } else {
+                                            iniValueStr = json_string_value(otherValue);
+                                        }
                                         std::string iniValue = readIniValue(sourceIni, sectionIni, keyIni);
                                         if (iniValueStr == iniValue) {
                                             name = json_string_value(keyValue);
@@ -771,7 +780,7 @@ public:
     SubMenu(const std::string& path) : subPath(path) {}
     ~SubMenu() {}
 
-    std::string findCurrent(std::string jsonPath, std::string offset) {
+    std::string findCurrentKip(std::string jsonPath, std::string offset) {
         std::string dispValue, searchKey;
         int hexLength;
         const char* valueStr;
@@ -826,12 +835,66 @@ public:
                         }
                     }
                 }
-
             }
             json_decref(jsonData);
         }
         return "\u25B6";
+    }
 
+    std::string findCurrentIni(std::string jsonPath, std::string iniPath, std::string section, std::string key) {
+        std::string dispValue, searchKey;
+
+        json_t* jsonData = readJsonFromFile(jsonPath);
+        if (jsonData && json_is_array(jsonData)) {
+            size_t arraySize = json_array_size(jsonData);
+            if (arraySize < 2) {
+                json_decref(jsonData);
+                return "\u25B6";
+            }
+            json_t* item = json_array_get(jsonData, 1);
+            if (item && json_is_object(item)) {
+                std::string name;
+                json_t* hexValue = json_object_get(item, "hex");
+                json_t* decValue = json_object_get(item, "dec");
+                json_t* otherValue = json_object_get(item, "value");
+                if ((hexValue && json_is_string(hexValue))) {
+                    searchKey = "hex";
+                }
+                else if ((decValue && json_is_string(decValue))) {
+                    searchKey = "dec";
+                }
+                else if ((otherValue && json_is_string(otherValue))) {
+                    searchKey = "value";
+                }
+                else {
+                    json_decref(jsonData);
+                    return "\u25B6";
+                }
+                std::string iniValue = readIniValue(iniPath, section, key);
+                if (!iniValue.empty()) {
+                    for (size_t i = 0; i < arraySize; ++i) {
+                        json_t* item = json_array_get(jsonData, i);
+                        if (item && json_is_object(item)) {
+                            json_t* searchItem = json_object_get(item, searchKey.c_str());
+                            if (searchItem && json_is_string(searchItem)) {
+                                if (json_string_value(searchItem) == iniValue) {
+                                    json_t* name = json_object_get(item, "name");
+                                    std::string cur_name = json_string_value(name);
+                                    size_t footer_pos = cur_name.find(" - ");
+                                    if (footer_pos != std::string::npos) {
+                                        cur_name = cur_name.substr(0, footer_pos);
+                                    }
+                                    json_decref(jsonData);
+                                    return cur_name;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            json_decref(jsonData);
+        }
+        return "\u25B6";
     }
 
     virtual tsl::elm::Element* createUI() override {
@@ -1002,10 +1065,17 @@ public:
                     listItem->setValue(footer);
                 }
                 for (const auto& cmd : option.second) {
-                    if (cmd[0] == "json_mark_cur_kip" && showCurInMenu) {
+                    if ((cmd[0] == "json_mark_cur_kip") && showCurInMenu) {
                         auto& offset = cmd[3];
                         std::string jsonPath = preprocessPath(cmd[1]);
-                        listItem->setValue(findCurrent(jsonPath, offset));
+                        listItem->setValue(findCurrentKip(jsonPath, offset));
+                    }
+                    if ((cmd[0] == "json_mark_cur_ini") && showCurInMenu) {
+                        std::string sourceIni  = preprocessPath(cmd[3]);
+                        auto& sectionIni = cmd[4];
+                        auto& keyIni     = cmd[5];
+                        std::string jsonPath   = preprocessPath(cmd[1]);
+                        listItem->setValue(findCurrentIni(jsonPath, sourceIni, sectionIni, keyIni));
                     }
                 }
                 
