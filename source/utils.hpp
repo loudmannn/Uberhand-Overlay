@@ -838,9 +838,10 @@ std::pair<std::string, int> dispCustData(const std::string jsonPath, std::string
                                         intValue = intValue/1000;
                                     }
                                     if (j_prefix) {
-                                        name = json_string_value(j_prefix) + name;
+                                        output += name + ": "  + json_string_value(j_prefix) + std::to_string(intValue);
+                                    } else {
+                                        output += name + ": " + std::to_string(intValue);
                                     }
-                                    output += name + ": " + std::to_string(intValue);
                                     if (state == "check_extent" && intValue < 100) 
                                         extent = "";
                                 }
