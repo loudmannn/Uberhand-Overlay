@@ -3486,6 +3486,20 @@ namespace tsl {
             return this->changeTo(std::make_unique<G>(std::forward<Args>(args)...));
         }
 
+        template<typename G, typename ...Args>
+        std::unique_ptr<tsl::Gui>& replaceWith(Args&&... args) {
+            this->m_guiStack.pop();
+            return this->changeTo(std::make_unique<G>(std::forward<Args>(args)...));
+        }
+
+        template<typename G, typename ...Args>
+        std::unique_ptr<tsl::Gui>& resetWith(Args&&... args) {
+            while (!this->m_guiStack.empty()) {
+                this->m_guiStack.pop();
+            }
+            return this->changeTo(std::make_unique<G>(std::forward<Args>(args)...));
+        }
+
         /**
          * @brief Pops the top Gui from the stack and goes back to the last one
          * @note The Overlay gets closes once there are no more Guis on the stack
@@ -3505,6 +3519,12 @@ namespace tsl {
 
         template<typename G, typename ...Args>
         friend std::unique_ptr<tsl::Gui>& changeTo(Args&&... args);
+
+        template<typename G, typename ...Args>
+        friend std::unique_ptr<tsl::Gui>& replaceWith(Args&&... args);
+
+        template<typename G, typename ...Args>
+        friend std::unique_ptr<tsl::Gui>& resetWith(Args&&... args);
 
         friend void goBack();
 
@@ -3682,6 +3702,16 @@ namespace tsl {
     template<typename G, typename ...Args>
     std::unique_ptr<tsl::Gui>& changeTo(Args&&... args) {
         return Overlay::get()->changeTo<G, Args...>(std::forward<Args>(args)...);
+    }
+
+    template<typename G, typename ...Args>
+    std::unique_ptr<tsl::Gui>& replaceWith(Args&&... args) {
+        return Overlay::get()->replaceWith<G, Args...>(std::forward<Args>(args)...);
+    }
+
+    template<typename G, typename ...Args>
+    std::unique_ptr<tsl::Gui>& resetWith(Args&&... args) {
+        return Overlay::get()->resetWith<G, Args...>(std::forward<Args>(args)...);
     }
 
     /**
