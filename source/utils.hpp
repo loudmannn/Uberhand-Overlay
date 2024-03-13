@@ -242,17 +242,13 @@ std::string getCurrentKipCustomDataJson(const std::vector<std::string>& jsonPath
     std::string name = "";
     std::string offsetStr = "";
     std::string increment  = "";
-    bool allign = false;
+
     int checkDefault = 0;
     size_t length = 0;
     bool tableShiftMode = false;
     int tableState;
     std::vector<std::string> baseList;
     std::vector<std::string> baseIncList;
-
-    std::string extentsValue = "";
-    std::string fillersValue = "";
-    std::string pagenumValue = "";
 
     bool fillerBeforeFlag = false;
     int jsonIndex = 0;
@@ -346,10 +342,8 @@ std::string getCurrentKipCustomDataJson(const std::vector<std::string>& jsonPath
                                 length = std::stoi(json_string_value(j_length));
                                 if (j_extent) {
                                     extent = json_string_value(j_extent);
-                                    extentsValue += extent + ",";
                                 } else {
                                     extent = "";
-                                    extentsValue += ",";
                                 }
 
                                 if (offsetStr.find(',') != std::string::npos) {
@@ -369,7 +363,6 @@ std::string getCurrentKipCustomDataJson(const std::vector<std::string>& jsonPath
                                     }
                                     current.pop_back();
                                     json_array_append_new(jsonKipCustomSettings, json_pack("{s:s, s:s, s:s, s:s}", name.c_str(), current.c_str(), "extent", extent.compare("") == 0 ? "" : extent.c_str(), "filler_before", fillerBeforeFlag ? "true" : "false", "page", std::to_string(jsonIndex).c_str()));
-                                    pagenumValue += std::to_string(jsonIndex) + ",";
                                 } else {
                                     json_t* j_default = json_object_get(item, "default");
                                     if (j_default) {
@@ -380,19 +373,7 @@ std::string getCurrentKipCustomDataJson(const std::vector<std::string>& jsonPath
                                         }
                                     }
 
-                                    if (allign) {
-                                        // Format the string to have two columns; Calculate number of spaces needed
-                                        size_t found = output.rfind('\n');
-                                        int numreps = 33 - (output.length() - found - 1) - name.length() - length - 4;
-                                        if (!extent.empty()) {
-                                            numreps -= extent.length();
-                                        }
-                                        output.append(numreps, ' ');
-                                        allign = false;
-                                    }
-
                                     if (checkDefault && currentHex != "000000") {
-                                        output += name + ": " + "Default";
                                         extent = "";
                                         checkDefault = 0;
                                     } else {
@@ -416,30 +397,18 @@ std::string getCurrentKipCustomDataJson(const std::vector<std::string>& jsonPath
                                             json_array_append_new(jsonKipCustomSettings, json_pack("{s:s, s:s, s:s, s:s, s:s}", name.c_str(), currentHex.c_str(), "extent", extent.compare("") == 0 ? "" : extent.c_str(), "filler_before", fillerBeforeFlag ? "true" : "false", "page", std::to_string(jsonIndex).c_str(), "no_skip", state.compare("no_skip") == 0 ? "true" : "false"));
                                         else
                                             json_array_append_new(jsonKipCustomSettings, json_pack("{s:s, s:s, s:s, s:s}", name.c_str(), currentHex.c_str(), "extent", extent.compare("") == 0 ? "" : extent.c_str(), "filler_before", fillerBeforeFlag ? "true" : "false", "page", std::to_string(jsonIndex).c_str()));
-                                        pagenumValue += std::to_string(jsonIndex) + ",";
+
                                         if (state == "check_extent" && intValue < 100)
                                             extent = "";
                                     }
                                 }
 
-                                if (!extent.empty()) {
-                                    output += extent + ",";
-                                }
-                                if (state != "no_skip"){
-                                    output += '\n';
-                                } else {
-                                    allign = true;
-                                }
                                 fillerBeforeFlag = false;
-                                fillersValue += "false,";
                             } else { // When state = filler
                                 fillerBeforeFlag = true;
-                                fillersValue += "true,";
                                 std::string name = json_string_value(keyValue);
                                 if(name.compare("") != 0)
                                     json_array_append_new(jsonKipCustomSettings, json_pack("{s:s, s:s, s:s}", name.c_str(), "", "filler_before", "true", "page", std::to_string(jsonIndex).c_str()));
-                                output += name;
-                                output += '\n';
                             }
                         }
                     }
