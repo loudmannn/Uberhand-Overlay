@@ -63,6 +63,396 @@ enum ShiftFocusMode {
     DownMax
 };
 
+std::vector<std::string> split (const std::string &s, char delim) {
+    std::vector<std::string> result;
+    std::stringstream ss (s);
+    std::string item;
+
+    while (getline (ss, item, delim)) {
+        result.push_back (item);
+    }
+
+    return result;
+}
+
+void setCurrentKipCustomDataFromJson(const std::string& jsonCustomDataPath, const std::vector<std::string>& jsonPathArr, const std::string& kipPath = "/atmosphere/kips/loader.kip") 
+{
+
+    std::string extent = "";
+    std::string state = "";
+    std::string name = "";
+    std::string offsetStr = "";
+    std::string increment  = "";
+    std::string customSettingsValue = "";
+
+    bool tableShiftMode = false;
+    int tableState;
+    std::vector<std::string> baseList;
+    std::vector<std::string> baseIncList;
+
+    auto jsonKipCustomSettings = readJsonFromFile(jsonCustomDataPath);
+    std::vector<std::string> customSettingsValueVector;
+    size_t customSettingsValueVectorIterator = 0;
+
+    for (auto &jsonPath : jsonPathArr)
+    {
+        if (!isFileOrDirectory(jsonPath)) {
+            return;
+        }
+        auto jsonData = readJsonFromFile(jsonPath);
+        if (jsonData) {
+            size_t arraySize = json_array_size(jsonData);
+
+            const std::string CUST = "43555354";
+            const std::vector<size_t> offsetStrs = findHexDataOffsets(kipPath, CUST);
+            if (offsetStrs.empty()) {
+                log("CUST not found.");
+                return;
+            }
+            const size_t custOffset = offsetStrs[0];
+
+            for (size_t i = 0; i < arraySize; ++i) {
+                json_t* item = json_array_get(jsonData, i);
+                if (item && json_is_object(item)) {
+                    json_t* keyValue = json_object_get(item, "name");
+                    // log(json_string_value(keyValue));
+                    std::string tabBaseCheck;
+                    if (keyValue)
+                        tabBaseCheck = json_string_value(keyValue);
+                    if (tabBaseCheck == "TABLE_BASE") {
+                        tableShiftMode = true;
+                        const size_t offset = custOffset + 44U;
+
+                        FILE* file = fopen(kipPath.c_str(), "rb+");
+                        if (!file) {
+                            log("Failed to open the loader.kip.");
+                            return;
+                        }
+                        const std::string tableStateStr = readHexDataAtOffsetF(file, offset, 1);
+
+                        fclose(file);
+
+                        tableState = reversedHexToInt(tableStateStr);
+                        //log(tableStateStr);
+
+                        json_t* j_base = json_object_get(item, "base");
+                        std::string base = json_string_value(j_base);
+                        std::istringstream iss2(base);
+                        std::string baseItem;
+
+                        if (base.find(',') != std::string::npos) {
+                            // Split the string by commas and store each offset in a vector
+                            while (std::getline(iss2, baseItem, ',')) {
+                                baseList.push_back(baseItem);
+                            }
+                        }
+
+                        json_t* j_base_inc = json_object_get(item, "base_increment");
+                        if (!j_base_inc) {
+                            tableShiftMode = false;
+                            continue;
+                        }
+                        std::string base_inc = json_string_value(j_base_inc);
+                        std::istringstream iss(base_inc);
+                        std::string baseIncItem;
+
+                        if (base_inc.find(',') != std::string::npos) {
+                            // Split the string by commas and store each offset in a vector
+                            while (std::getline(iss, baseIncItem, ',')) {
+                                baseIncList.push_back(baseIncItem);
+                            }
+                        }
+                    } else {
+                        if (keyValue && json_is_string(keyValue)) {
+                            json_t* j_offset    = json_object_get(item, "offset");
+                            json_t* j_length    = json_object_get(item, "length");
+                            json_t* j_state     = json_object_get(item, "state");
+
+                            if (j_state) {
+                                state = json_string_value(j_state);
+                            } else {
+                                state = "";
+                            }
+
+                            if (state != "filler" || state.empty()) {
+                                if (!j_offset || !j_length) {
+                                    return;
+                                }
+                                name = json_string_value(keyValue);
+                                offsetStr = json_string_value(j_offset);
+
+                                customSettingsValue = "";
+                                for (size_t j = 0; j < json_array_size(jsonKipCustomSettings); ++j)
+                                {
+                                    json_t* itemCustomSettings = json_array_get(jsonKipCustomSettings, j);
+                                    if (itemCustomSettings && json_is_object(itemCustomSettings)) {
+                                        json_t* keyCustomSettings = json_object_get(itemCustomSettings, name.c_str());
+                                        if (keyCustomSettings)
+                                        {
+                                            customSettingsValue = json_string_value(keyCustomSettings);
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if (offsetStr.find(',') != std::string::npos) {
+                                    std::istringstream iss(offsetStr);
+                                    std::string offsetItem;
+
+                                    customSettingsValueVector = split (customSettingsValue, ',');
+                                    customSettingsValueVectorIterator = 0;
+                                    // Split the string by commas and process each offset
+                                    while (std::getline(iss, offsetItem, ',')) {
+                                        try {
+                                            const size_t offset = custOffset + std::stoul(offsetItem);
+                                            hexEditByOffset(kipPath, offset, customSettingsValueVector[customSettingsValueVectorIterator]);
+                                            customSettingsValueVectorIterator = customSettingsValueVectorIterator + 1;
+                                        }
+                                        catch (const std::invalid_argument& ex) {
+                                            log("ERROR - %s:%d - invalid offset value: \"%s\" in \"%s\"", __func__, __LINE__, offsetItem.c_str(), jsonPath.c_str());
+                                        }
+                                    }
+                                } else {
+                                    if (tableShiftMode) {
+                                        //log(std::to_string(std::stoi(baseList[tableState]) + (std::stoi(offset) * std::stoi(baseIncList[tableState]))));
+                                        const size_t findFreq = std::stoi(baseList[tableState]) + (std::stoul(offsetStr) * std::stoi(baseIncList[tableState]));
+                                        const size_t offset = custOffset + findFreq;
+                                        hexEditByOffset(kipPath, offset, customSettingsValue);
+                                    } else {
+                                        const size_t offset = custOffset + std::stoul(offsetStr);
+                                        hexEditByOffset(kipPath, offset, customSettingsValue);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+std::string getCurrentKipCustomDataJson(const std::vector<std::string>& jsonPathArr, const std::string& kipPath = "/atmosphere/kips/loader.kip") {
+
+    std::string currentHex = "";
+    std::string extent = "";
+    std::string output = "";
+    std::string state = "";
+    std::string name = "";
+    std::string offsetStr = "";
+    std::string increment  = "";
+    bool allign = false;
+    int checkDefault = 0;
+    size_t length = 0;
+    bool tableShiftMode = false;
+    int tableState;
+    std::vector<std::string> baseList;
+    std::vector<std::string> baseIncList;
+
+    std::string extentsValue = "";
+    std::string fillersValue = "";
+    std::string pagenumValue = "";
+
+    bool fillerBeforeFlag = false;
+    int jsonIndex = 0;
+    json_t *jsonKipCustomSettings = json_array();
+
+    for (auto &jsonPath : jsonPathArr)
+    {
+        if (!isFileOrDirectory(jsonPath)) {
+            return output;
+        }
+        jsonIndex++;
+        auto jsonData = readJsonFromFile(jsonPath);
+        if (jsonData) {
+            size_t arraySize = json_array_size(jsonData);
+
+            const std::string CUST = "43555354";
+            const std::vector<size_t> offsetStrs = findHexDataOffsets(kipPath, CUST);
+            if (offsetStrs.empty()) {
+                log("CUST not found.");
+                return "";
+            }
+            const size_t custOffset = offsetStrs[0];
+            FILE* file = fopen(kipPath.c_str(), "rb");
+            if (!file) {
+                log("Failed to open the loader.kip.");
+                return output;
+            }
+
+            for (size_t i = 0; i < arraySize; ++i) {
+                json_t* item = json_array_get(jsonData, i);
+                if (item && json_is_object(item)) {
+                    json_t* keyValue = json_object_get(item, "name");
+                    // log(json_string_value(keyValue));
+                    std::string tabBaseCheck;
+                    if (keyValue)
+                        tabBaseCheck = json_string_value(keyValue);
+                    if (tabBaseCheck == "TABLE_BASE") {
+                        tableShiftMode = true;
+                        const size_t offset = custOffset + 44U;
+                        const std::string tableStateStr = readHexDataAtOffsetF(file, offset, 1);
+                        tableState = reversedHexToInt(tableStateStr);
+                        //log(tableStateStr);
+
+                        json_t* j_base = json_object_get(item, "base");
+                        std::string base = json_string_value(j_base);
+                        std::istringstream iss2(base);
+                        std::string baseItem;
+
+                        if (base.find(',') != std::string::npos) {
+                            // Split the string by commas and store each offset in a vector
+                            while (std::getline(iss2, baseItem, ',')) {
+                                baseList.push_back(baseItem);
+                            }
+                        }
+
+                        json_t* j_base_inc = json_object_get(item, "base_increment");
+                        if (!j_base_inc) {
+                            tableShiftMode = false;
+                            continue;
+                        }
+                        std::string base_inc = json_string_value(j_base_inc);
+                        std::istringstream iss(base_inc);
+                        std::string baseIncItem;
+
+                        if (base_inc.find(',') != std::string::npos) {
+                            // Split the string by commas and store each offset in a vector
+                            while (std::getline(iss, baseIncItem, ',')) {
+                                baseIncList.push_back(baseIncItem);
+                            }
+                        }
+                    } else {
+                        if (keyValue && json_is_string(keyValue)) {
+                            json_t* j_offset    = json_object_get(item, "offset");
+                            json_t* j_length    = json_object_get(item, "length");
+                            json_t* j_extent    = json_object_get(item, "extent");
+                            json_t* j_state     = json_object_get(item, "state");
+                            json_t* j_increment = json_object_get(item, "increment");
+
+                            if (j_state) {
+                                state = json_string_value(j_state);
+                            } else {
+                                state = "";
+                            }
+
+                            if (state != "filler" || state.empty()) {
+                                if (!j_offset || !j_length) {
+                                    return output;
+                                }
+                                name = json_string_value(keyValue);
+                                offsetStr = json_string_value(j_offset);
+                                length = std::stoi(json_string_value(j_length));
+                                if (j_extent) {
+                                    extent = json_string_value(j_extent);
+                                    extentsValue += extent + ",";
+                                } else {
+                                    extent = "";
+                                    extentsValue += ",";
+                                }
+
+                                if (offsetStr.find(',') != std::string::npos) {
+                                    std::istringstream iss(offsetStr);
+                                    std::string offsetItem;
+                                    std::string current = "";
+                                    // Split the string by commas and process each offset
+                                    while (std::getline(iss, offsetItem, ',')) {
+                                        try {
+                                            const size_t offset = custOffset + std::stoul(offsetItem);
+                                            const std::string tempHex = readHexDataAtOffsetF(file, offset, length); // Read the data from kip
+                                            current += std::string(tempHex) + ',';
+                                        }
+                                        catch (const std::invalid_argument& ex) {
+                                            log("ERROR - %s:%d - invalid offset value: \"%s\" in \"%s\"", __func__, __LINE__, offsetItem.c_str(), jsonPath.c_str());
+                                        }
+                                    }
+                                    current.pop_back();
+                                    json_array_append_new(jsonKipCustomSettings, json_pack("{s:s, s:s, s:s, s:s}", name.c_str(), current.c_str(), "extent", extent.compare("") == 0 ? "" : extent.c_str(), "filler_before", fillerBeforeFlag ? "true" : "false", "page", std::to_string(jsonIndex).c_str()));
+                                    pagenumValue += std::to_string(jsonIndex) + ",";
+                                } else {
+                                    json_t* j_default = json_object_get(item, "default");
+                                    if (j_default) {
+                                        checkDefault = std::stoi(json_string_value(j_default));
+                                        if (checkDefault == 1) {
+                                            size_t offsetDef = custOffset + std::stoul(offsetStr) + length;
+                                            currentHex = readHexDataAtOffsetF(file, offsetDef, length); // Read next <length> hex chars from specified offset
+                                        }
+                                    }
+
+                                    if (allign) {
+                                        // Format the string to have two columns; Calculate number of spaces needed
+                                        size_t found = output.rfind('\n');
+                                        int numreps = 33 - (output.length() - found - 1) - name.length() - length - 4;
+                                        if (!extent.empty()) {
+                                            numreps -= extent.length();
+                                        }
+                                        output.append(numreps, ' ');
+                                        allign = false;
+                                    }
+
+                                    if (checkDefault && currentHex != "000000") {
+                                        output += name + ": " + "Default";
+                                        extent = "";
+                                        checkDefault = 0;
+                                    } else {
+                                        if (tableShiftMode) {
+                                            //log(std::to_string(std::stoi(baseList[tableState]) + (std::stoi(offset) * std::stoi(baseIncList[tableState]))));
+                                            const size_t findFreq = std::stoi(baseList[tableState]) + (std::stoul(offsetStr) * std::stoi(baseIncList[tableState]));
+                                            const size_t offset = custOffset + findFreq;
+                                            currentHex = readHexDataAtOffsetF(file, offset, length); // Read the data from kip with offset starting from 'C' in 'CUST'
+                                        } else {
+                                            const size_t offset = custOffset + std::stoul(offsetStr);
+                                            currentHex = readHexDataAtOffsetF(file, offset, length); // Read the data from kip with offset starting from 'C' in 'CUST'
+                                        }
+                                        unsigned int intValue = reversedHexToInt(currentHex);
+                                        if (j_increment) { // Add increment value from the JSON to the displayed value
+                                            intValue += std::stoi(json_string_value(j_increment));
+                                        }
+                                        if (intValue > 1500) {
+                                            intValue = intValue/1000;
+                                        }
+                                        if (tableShiftMode)
+                                            json_array_append_new(jsonKipCustomSettings, json_pack("{s:s, s:s, s:s, s:s, s:s}", name.c_str(), currentHex.c_str(), "extent", extent.compare("") == 0 ? "" : extent.c_str(), "filler_before", fillerBeforeFlag ? "true" : "false", "page", std::to_string(jsonIndex).c_str(), "no_skip", state.compare("no_skip") == 0 ? "true" : "false"));
+                                        else
+                                            json_array_append_new(jsonKipCustomSettings, json_pack("{s:s, s:s, s:s, s:s}", name.c_str(), currentHex.c_str(), "extent", extent.compare("") == 0 ? "" : extent.c_str(), "filler_before", fillerBeforeFlag ? "true" : "false", "page", std::to_string(jsonIndex).c_str()));
+                                        pagenumValue += std::to_string(jsonIndex) + ",";
+                                        if (state == "check_extent" && intValue < 100)
+                                            extent = "";
+                                    }
+                                }
+
+                                if (!extent.empty()) {
+                                    output += extent + ",";
+                                }
+                                if (state != "no_skip"){
+                                    output += '\n';
+                                } else {
+                                    allign = true;
+                                }
+                                fillerBeforeFlag = false;
+                                fillersValue += "false,";
+                            } else { // When state = filler
+                                fillerBeforeFlag = true;
+                                fillersValue += "true,";
+                                std::string name = json_string_value(keyValue);
+                                if(name.compare("") != 0)
+                                    json_array_append_new(jsonKipCustomSettings, json_pack("{s:s, s:s, s:s}", name.c_str(), "", "filler_before", "true", "page", std::to_string(jsonIndex).c_str()));
+                                output += name;
+                                output += '\n';
+                            }
+                        }
+                    }
+                }
+            }
+            fclose(file);
+        }
+    }
+
+    output = std::string(json_dumps(jsonKipCustomSettings, JSON_ENCODE_ANY));
+    return output;
+}
+
 void scrollListItems(tsl::Gui* gui, ShiftFocusMode mode) {
     int i = 0;
     int scrollItemNum = 0;
@@ -669,6 +1059,21 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
         } else if (commandName == "backup") {
             // Generate backup
             generateBackup();
+        } else if (commandName == "backup-kip2json") {
+            // Generate KIP backup to JSON file
+            if (command.size() >= 2) {
+                command.erase(command.begin()); 
+                std::string data = getCurrentKipCustomDataJson(command);
+                saveKipBackup2Json(data);
+            }
+        } else if (commandName == "restore-json2kip") {
+            // Restore KIP from backup JSON file
+            if (command.size() >= 3) {
+                std::string jsonPath = command[1];
+                command.erase(command.begin());
+                command.erase(command.begin());
+                setCurrentKipCustomDataFromJson(jsonPath, command);
+            }
         }
     }
     return 0;
@@ -689,6 +1094,97 @@ tsl::PredefinedColors defineColor(const std::string& strColor) {
     } else {
         return tsl::PredefinedColors::DefaultText;
     } 
+}
+
+std::pair<std::string, int> dispKipCustomDataFromJson(const std::string& jsonCustomDataPath, int pageNum = 1, bool spacing = false) {
+
+    std::string output = "";
+    std::string currentKey = "";
+    std::string currentName = "";
+    std::string currentValue = "";
+    std::string currentExtent = "";
+
+    int currentPage = 0;
+    int lineCount = 1;
+
+    bool currentFillerBeforeFlag = false;
+    bool currentAlignFlag = false;
+
+    std::vector<std::string> propertyFileds = {"extent", "filler_before", "page", "no_skip"};
+    std::vector<std::string> tmpValueValueVector;
+
+    auto jsonKipCustomSettings = readJsonFromFile(jsonCustomDataPath);
+
+    const char *customSettingsKey;
+    json_t *customSettingsValue;
+    size_t customSettingsArrayIndex;
+    json_t *customSettingsArrayValue;
+
+    json_array_foreach(jsonKipCustomSettings, customSettingsArrayIndex, customSettingsArrayValue) {
+        json_object_foreach(customSettingsArrayValue, customSettingsKey, customSettingsValue) {
+            currentKey = std::string(customSettingsKey);
+
+            if (std::find(propertyFileds.begin(), propertyFileds.end(), currentKey) == propertyFileds.end()){
+                currentName = currentKey;
+                std::string tempValue = json_string_value(customSettingsValue);
+                if (tempValue.find(',') != std::string::npos) {
+                    currentValue = "";
+                    tmpValueValueVector = split (tempValue, ',');
+                    for (auto &singleValue : tmpValueValueVector) {
+                        unsigned int intValue = reversedHexToInt(singleValue);
+                        currentValue += std::to_string(intValue) + '-';
+                    }
+                    currentValue.pop_back();
+                }
+                else {
+                    if(tempValue.compare("") != 0) {
+                        unsigned int intValue = reversedHexToInt(tempValue);
+                        if (intValue > 1500) {
+                            intValue = intValue/1000;
+                        }
+                        currentValue = std::to_string(intValue);
+                    }
+                    else
+                        currentValue = "";
+                }
+            }
+            else {
+                if(currentKey.compare("extent") == 0)
+                    currentExtent = json_string_value(customSettingsValue);
+                else if(currentKey.compare("filler_before") == 0)
+                    currentFillerBeforeFlag = std::string(json_string_value(customSettingsValue)).compare("false") == 0 ? false : true;
+                else if(currentKey.compare("page") == 0)
+                    currentPage = std::stoi(json_string_value(customSettingsValue));
+                else if(currentKey.compare("no_skip") == 0)
+                    currentAlignFlag = std::string(json_string_value(customSettingsValue)).compare("true") == 0 ? true : false;
+            }
+        }
+
+        if(currentPage != 0 && currentPage == pageNum)
+        {
+            if(currentFillerBeforeFlag) {
+                output += "\n";
+                lineCount++;
+            }
+            output += currentName + ": " + currentValue + currentExtent;
+
+            if (currentAlignFlag) {
+                // Format the string to have two columns; Calculate number of spaces needed
+                size_t found = output.rfind('\n');
+                int numreps = 33 - (output.length() - found - 1) - currentName.length() - currentValue.length() - 4;
+                if (!currentExtent.empty()) {
+                    numreps -= currentExtent.length();
+                }
+                output.append(numreps, ' ');
+            }
+            else
+                output += "\n";
+
+            lineCount++;
+        }
+    }
+
+    return std::make_pair(output, lineCount);
 }
 
 std::pair<std::string, int> dispCustData(const std::string& jsonPath, const std::string& kipPath = "/atmosphere/kips/loader.kip", bool spacing = false) {

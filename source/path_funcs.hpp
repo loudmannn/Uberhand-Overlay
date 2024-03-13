@@ -428,3 +428,27 @@ bool generateBackup() {
     bool result = copyFileOrDirectory("/atmosphere/kips/loader.kip", backupName);
     return result;
 }
+
+void saveKipBackup2Json(const std::string backupContent) {
+    int highestNumber = 0;
+    namespace fs = std::filesystem;
+    std::regex pattern(R"(Backup \[(\d+)\])");
+
+    const std::string kipBackupJsonPath = "/atmosphere/kips/kip-json/";
+    if (!isDirectory(kipBackupJsonPath))
+        createDirectory(kipBackupJsonPath);
+
+    for (const auto& entry : fs::directory_iterator(kipBackupJsonPath)) {
+        if (fs::is_regular_file(entry)) {
+            std::smatch match;
+            std::string filename = entry.path().filename().string();
+            if (std::regex_search(filename, match, pattern)) {
+                int number = std::stoi(match[1].str());
+                highestNumber = std::max(highestNumber, number);
+            }
+        }
+    }
+    std::string backupFilePath = kipBackupJsonPath + "Backup [" + std::to_string(highestNumber + 1) + "].json";
+    
+    createTextFile(backupFilePath, backupContent);
+}
