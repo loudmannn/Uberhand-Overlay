@@ -1648,10 +1648,10 @@ public:
                 } else {
                     setIniFileValue(settingsConfigIniPath, "uberhand", "uberhand_updates_only", "false");
                 }
-                if (!uberhandSection["ovl_repo"].empty()){
+                if (!uberhandSection["ovl_repo"].empty() && uberhandSection["ovl_repo"].find("nsw-ovl-repo") != std::string::npos ){
                     repoUrl = uberhandSection["ovl_repo"];
                 } else {
-                    repoUrl = "https://raw.githubusercontent.com/i3sey/uUpdater-ovl-repo/main/main.ini";
+                    repoUrl = "https://raw.githubusercontent.com/loudmannn/nsw-ovl-repo/main/main.ini";
                     setIniFileValue(settingsConfigIniPath, "uberhand", "ovl_repo", repoUrl);
                 }
                 if (uberhandSection["package_updater"] == "false") {
@@ -1883,7 +1883,7 @@ public:
                                 std::map<std::string, std::string> ovlmenu;
                                 ovlmenu["name"] = overlayName;
                                 ovlmenu["localVer"] = overlayVersion;
-                                ovlmenu["link"] = "https://api.github.com/repos/efosamark/Uberhand-Overlay/releases?per_page=1";
+                                ovlmenu["link"] = "https://api.github.com/repos/loudmannn/Uberhand-Overlay/releases?per_page=1";
                                 ovlmenu["downloadEntry"] = "1";
                                 std::map<std::string, std::string> resultUpdate = ovlUpdateCheck(ovlmenu);
                                 if (!resultUpdate.empty()) {
