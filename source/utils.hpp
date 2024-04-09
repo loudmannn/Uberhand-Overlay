@@ -896,6 +896,26 @@ int interpretAndExecuteCommand(const std::vector<std::vector<std::string>>& comm
                     return -1;
                 }
             }
+        } else if (commandName == "hex-by-swap-from-addr") {
+            // Edit command - Hex data replacement with occurrence
+            if (command.size() >= 4) {
+                sourcePath = preprocessPath(command[1]);
+                bool result;
+                hexDataToReplace = removeQuotes(command[2]);
+                hexDataReplacement = removeQuotes(command[3]);
+                std::string address = removeQuotes(command[4]);
+
+                if (command.size() >= 6) {
+                    occurrence = removeQuotes(command[5]);
+                    result  = hexEditFindReplaceFromAddress(sourcePath, hexDataToReplace, hexDataReplacement, address, occurrence);
+                } else {
+                    result  = hexEditFindReplaceFromAddress(sourcePath, hexDataToReplace, hexDataReplacement, address);
+                }
+                if (!result && catchErrors) {
+                    log("Error in %s command", commandName.c_str());
+                    return -1;
+                }
+            }
         } else if (commandName == "hex-by-string") {
             // Edit command - Hex data replacement with occurrence
             if (command.size() >= 4) {
